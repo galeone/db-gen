@@ -3,7 +3,9 @@ jdbc-gen
 
 Generate JDBC classes from a db description.
 
+
 > This code sucks.
+
 I know, but I need it as soon as possible and I really don't care so much about Java coding stiles. 
 
 Anyway, it works.
