@@ -1,0 +1,18 @@
+Impiegato(
+CodFiscale string
+Cognome string
+Nome string
+DataNascita date
+) Impiegati - UNIQUE<CodFiscale>
+
+Progetto(
+CodiceProg string
+Titolo string
+Budget double
+) Progetti - UNIQUE<CodiceProg>
+
+Partecipazione(
+Impiegato FK REFERENCES Impiegato
+Progetto FK REFERENCES Progetto
+Data date
+) Partecipazioni - UNIQUE<Impiegato, Progetto>
