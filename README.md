@@ -1,8 +1,11 @@
 jdbc-gen
 ========
 
-Generate JDBC classes from a db description.
+Generate JDBC/DAO/Hibernate classes and configuration files from a db description.
 
+It also generate sample mains with working code.
+
+The generator will generate interfaces and only the implementation valid for a DB2 database.
 
 > This code sucks.
 
