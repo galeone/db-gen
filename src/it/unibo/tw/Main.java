@@ -1,22 +1,27 @@
 package it.unibo.tw;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.Queue;
 
 public class Main {
 	
-	private static BeanGenerator beanGenerator;
-	private static ManagerGenerator managerGenerator;
+	private static JDBCGenerator jdbcGenerator;
+	private static DAOGenerator daoGenerator;
+	private static final String pkgFolder = "src/it/unibo/tw";
+	private static final String pkg = "it.unibo.tw";
+	private static Map<String, Map<String, String>> fieldsFromName;
+	
 
 	/* See tables.txt to see a valid syntax example */
 	public static void main(String[] args) throws Exception {
-		beanGenerator = new BeanGenerator("src/it/unibo/tw", "it.unibo.tw");
-		managerGenerator = new ManagerGenerator("src/it/unibo/tw", "it.unibo.tw");
 		BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream("src/tables.txt")));
-
+		fieldsFromName = new HashMap<String, Map<String, String>>();
 		//parse ./tables.txt
 		String line, tableName = null, tableNamePlural;
 		Map<String, String> fields = new HashMap<String, String>();
@@ -34,10 +39,17 @@ public class Main {
 				tableNamePlural = Utils.UcFirst(lastLine[0].trim());
 				// add Long ID to field set (always present)
 				fields.put("Id", "Long");
-				// New Java Bean
-				beanGenerator.WriteBean(tableName, fields);
-				// New Manager
-				managerGenerator.writeRepository(tableName, tableNamePlural, fields, lastLine[1].replace('<', '(').replace('>', ')'));
+				// set constraints
+				String constraints = lastLine[1].replace('<', '(').replace('>', ')');
+				// JDBC
+				jdbcGenerator = new JDBCGenerator(pkgFolder, pkg, tableName, fields, tableNamePlural, constraints);
+				jdbcGenerator.writeBean();
+				jdbcGenerator.writeManager();
+				// DAO
+				daoGenerator = new DAOGenerator(pkgFolder, pkg, tableName, fields, tableNamePlural, constraints);
+				daoGenerator.writeDTO();
+				daoGenerator.writeDAO();
+				fieldsFromName.put(tableName.toLowerCase(), new HashMap<String, String>(fields));
 				fields.clear();
 			} else { //field
 				String[] field = line.split(" ");
@@ -47,7 +59,22 @@ public class Main {
 			}
 		}
 		reader.close();
-		System.out.println("Please press F5 in the ecplipse Project.\nNow import the created beans into the project and for every bean do: Source -> generate hashCode() and equals()");
+		//		DAO 		//
+		// Generate DAO Factory and DB2 implementation
+		// read file from pgkpath.dao and find *DAO.java
+		File[] files = new File(pkgFolder + "/dao/").listFiles();
+		Queue<String> daos = new LinkedList<String>();
+		for(File f : files) {
+			if(f.getName().endsWith("DAO.java")) {
+				daos.add(f.getName().replace(".java", ""));
+			}
+		}
+		String[] daoArr = daos.toArray(new String[daos.size()]);
+		daoGenerator.writeFactories(daoArr);
+		// Create Main
+		daoGenerator.writeMainTest(daoArr, fieldsFromName);
+		System.out.println("Please press F5 in the ecplipse Project.\n"
+				+ "Go into beans and dao folder and: Source -> generate hashCode() and equals()");
 	}
 
 }

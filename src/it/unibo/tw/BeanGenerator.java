@@ -11,9 +11,11 @@ import java.util.Map.Entry;
 
 public class BeanGenerator {
 	private final String pkgFolder, pkg, date = "import java.util.Date;\n";
+	private final String beansFor;
 	
-	public BeanGenerator(String pkgFolder, String pkg) {
-		this.pkg = "package " + pkg + ".beans;\n";
+	public BeanGenerator(String pkgFolder, String pkg, String beansFor) {
+		this.beansFor = beansFor.toLowerCase().trim();
+		this.pkg = "package " + pkg + "." + (beansFor.equals("dao") ? "dao" : "model" ) + ";\n";
 		this.pkgFolder = pkgFolder;
 	}
 	
@@ -51,7 +53,11 @@ public class BeanGenerator {
 	
 	public void WriteBean(String tableName, Map<String, String> fields) throws Exception {
 		// Folder
-		File beansFolder = new File(pkgFolder + "/beans/");
+		boolean dao = this.beansFor.equals("dao");
+		String dest = pkgFolder + "/" + (dao ?  "dao" : "model") + "/";
+		tableName =  tableName + ( dao ? "DTO" : "");
+		
+		File beansFolder = new File(dest);
 		if(! beansFolder.exists()) {
 			beansFolder.mkdir();
 		}
@@ -101,7 +107,7 @@ public class BeanGenerator {
 		sb.append("\n}");
 		
 		// write file
-		String filename = pkgFolder+ "/beans/" + tableName+ ".java";
+		String filename = dest + tableName + ".java";
 		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filename)));
 		writer.write(sb.toString());
 		writer.close();
