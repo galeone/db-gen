@@ -20,13 +20,94 @@ public class SQLGenerator {
 		generate();
 	}
 	
+	private String getTableNameStatement() {
+		return "\tprivate static final String TABLE = \"" + pluralName.toLowerCase() + "\";\n";
+	}
+	
+	private String getDropAndCreateStatements() {
+		// drop
+		StringBuilder sb = new StringBuilder("\tprivate static final String drop = \"DROP TABLE \" + TABLE;\n");
+		// create
+		sb.append("\tprivate static final String create = \"CREATE TABLE \" + TABLE + \" ( \" + \n");
+		for(Entry<String, String> field : fields.entrySet()) { 
+			String name = field.getKey().toUpperCase();
+			String type = field.getValue().toUpperCase();
+			if(type.equals("STRING")) {
+				type = "VARCHAR(50)";
+			} // date ok, double ok, boolean ok
+			String elem = "";
+			// Foreign key
+			if(name.indexOf("ID") == 0){
+				elem = name + "+ \"BIGINT NOT NULL ";
+				if(name.equals("ID")) { //primary key
+					elem += "PRIMARY KEY";
+				}
+				else { // foreign key
+					elem += "REFERENCES " + name.substring(2);
+				}
+			} else { // no  key
+				elem = name + "+ \"" + type + " NOT NULL"; 
+			}
+			sb.append( "\t\t\t" + elem + ", \" +\n" );
+		}
+		sb.append("\t\t\t\"" + constraints.toUpperCase());
+		sb.append(")\";\n\n");
+		return sb.toString();
+	}
+	
+	public String getHibernateModel() {
+		StringBuilder sb = new StringBuilder();
+		String id = "\t<id name=\"id\" column=\"id\">\n\t\t<generator class=\"increment\"/>\n\t</id>\n";
+		for(Entry<String, String> field : fields.entrySet()) { 
+			String name = field.getKey().toUpperCase();
+			String type = field.getValue();
+
+			// Foreign key
+			if(name.indexOf("ID") == 0){
+				if(name.equals("ID")) { //primary key
+					// do nothing
+				}
+				else { // foreign key - new set
+					sb.append("\t<!-- insert foreign key reference - set or whatelse -->\n");
+				}
+			} else { // no  key - element
+				sb.append("\t<property column=\"" + name + "\" name=\"");
+				sb.append(field.getKey() + "\" type=\"" + type + "\"");
+				if(type.toLowerCase().equals("string")) {
+					sb.append(" length=\"50\"");
+				}
+				sb.append(" />\n");
+			}
+		}
+		return id + sb.toString();
+	}
+	
+	public String getTableNameDropAndCreateStatements() {
+		StringBuilder sb = new StringBuilder(getTableNameStatement());
+		sb.append(getDropAndCreateStatements());
+		return sb.toString();
+	}
+	
+	public String getConstantFieldsName(boolean skipID) {
+		String ret = "";
+		for(Entry<String, String> field : fields.entrySet()) {
+			String name = field.getKey().toUpperCase();
+			if(skipID && name.equals("ID")) {
+				continue;
+			}
+			ret += "\tprivate static final String " + name + " = " + "\"" + name.toLowerCase() + "\";\n";
+		}
+		return ret;
+	}
+	
+	public String getConstantFieldsName() {
+		return getConstantFieldsName(false);
+	}
+	
 	private void generate() {
 		StringBuilder sb = new StringBuilder();
-		sb.append("\tprivate static final String TABLE = \"" + pluralName.toLowerCase() + "\";\n");
-		for(Entry<String, String> field : fields.entrySet()) {
-			String name = field.getKey();
-			sb.append("\tprivate static final String " + name.toUpperCase() + " = " + "\"" + name.toLowerCase() + "\";\n");
-		}
+		sb.append(getTableNameStatement());
+		sb.append(getConstantFieldsName());
 		
 		sb.append("\n\t// SQL STATEMENTS\n");
 		//insert
@@ -69,34 +150,8 @@ public class SQLGenerator {
 		//updatePositions.put("ID", howMany);
 		//read by id
 		sb.append("\tprivate static final String read_by_id = \"SELECT * FROM \" + TABLE + \" WHERE + \" + ID + \"  = ?\";\n");
-		// drop
-		sb.append("\tprivate static final String drop = \"DROP TABLE \" + TABLE;\n");
-		// create
-		sb.append("\tprivate static final String create = \"CREATE TABLE \" + TABLE + \" ( \" + \n");
-		toAppend = "";
-		for(Entry<String, String> field : fields.entrySet()) { 
-			String name = field.getKey().toUpperCase();
-			String type = field.getValue().toUpperCase();
-			if(type.equals("STRING")) {
-				type = "VARCHAR(50)";
-			} // date ok, double ok, boolean ok
-			String elem = "";
-			// Foreign key
-			if(name.indexOf("ID") == 0){
-				elem = name + "+ \"BIGINT NOT NULL ";
-				if(name.equals("ID")) { //primary key
-					elem += "PRIMARY KEY";
-				}
-				else { // foreign key
-					elem += "REFERENCES " + name.substring(2);
-				}
-			} else { // no  key
-				elem = name + "+ \"" + type + " NOT NULL"; 
-			}
-			sb.append( "\t\t\t" + elem + ", \" +\n" );
-		}
-		sb.append("\t\t\t\"" + constraints.toUpperCase());
-		sb.append(")\";\n\n");
+		// Drop and create 
+		sb.append(getDropAndCreateStatements());
 		
 		this.sqlStatements = sb.toString();
 		
@@ -116,22 +171,25 @@ public class SQLGenerator {
 	
 	public String getObjectInit(String objName, Map<String, String> fields) {
 		String ret = "";
+		Random r = new Random();
+		r.setSeed(r.nextLong());
 		
 		for(Entry<String, String> field : fields.entrySet()) {
 			String name = Utils.UcFirst(field.getKey()), type = field.getValue().toLowerCase();
 			if(type.equals("date")) {
 				ret += "\t\tcal = Calendar.getInstance();\n";
-				ret += "\t\tcal.set(2014,Calendar.JUNE," + (new Random().nextInt(27) +1) + ");\n";
+				ret += "\t\tcal.set(2014,Calendar.JUNE," + (r.nextInt(27) +1) + ");\n";
 				ret += "\t\t" + objName + ".set" + name + "(cal.getTime());\n";
 			} else if(type.equals("string")) {
-				ret += "\t\t" + objName + ".set" + name + "(\"" + name + ((new Random().nextInt(10)) + "\");\n");
+				ret += "\t\t" + objName + ".set" + name + "(\"" + name + (r.nextInt(30) + 1) + "\");\n";
 			} else if(type.equals("long")) {
-				ret += "\t\t" + objName + ".set" + name + "(" + (new Random().nextInt(100) +1) + "L);\n";
+				ret += "\t\t" + objName + ".set" + name + "(" + (r.nextInt(100) +1) + "L);\n";
 			} else if(type.equals("double")) {
-				ret += "\t\t" + objName + ".set" + name + "(" + (new Random().nextInt(100) +1) + "d);\n";
+				ret += "\t\t" + objName + ".set" + name + "(" + (r.nextInt(100) +1) + "d);\n";
 			} else {
-				ret += "\t\t" + objName + ".set" + name + "(" + (new Random().nextInt(100) +1) + ");\n";
+				ret += "\t\t" + objName + ".set" + name + "(" + (r.nextInt(100) +1) + ");\n";
 			}
+			r.setSeed(r.nextLong());
 		}
 		return ret;
 	}

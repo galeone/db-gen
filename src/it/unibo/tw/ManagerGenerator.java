@@ -1,10 +1,7 @@
 package it.unibo.tw;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.util.Map;
 
 public class ManagerGenerator {
@@ -140,9 +137,6 @@ public class ManagerGenerator {
 		
 		// write file
 		String filename = pkgFolder+ "/db/" + className + ".java";
-		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filename)));
-		writer.write(sb.toString());
-		writer.close();
-		System.out.println("[!] Created: " + filename);
+		Utils.WriteFile(filename, sb.toString());
 	}
 }

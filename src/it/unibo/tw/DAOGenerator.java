@@ -1,10 +1,7 @@
 package it.unibo.tw;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.util.Map;
 
 public class DAOGenerator {
@@ -55,10 +52,7 @@ public class DAOGenerator {
 		// Write interface
 		
 		String filename = pkgFolder + dao + ".java";
-		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filename)));
-		writer.write(sb.toString());
-		writer.close();
-		System.out.println("[!] Created: " + filename);
+		Utils.WriteFile(filename, sb.toString());
 		
 		// db2 implementation
 		String dest = pkgFolder + "/db2/";
@@ -194,10 +188,7 @@ public class DAOGenerator {
 		sb.append("\t//Other methods\n\n}");
 		// Write file
 		filename = dest + db2dao + ".java";
-		writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filename)));
-		writer.write(sb.toString());
-		writer.close();
-		System.out.println("[!] Created: " + filename);
+		Utils.WriteFile(filename, sb.toString());
 	}
 	
 	void writeFactories(String[] daos) throws IOException {
@@ -219,10 +210,7 @@ public class DAOGenerator {
 		sb.append("}");
 		
 		String filename = pkgFolder + "/DAOFactory.java";
-		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filename)));
-		writer.write(sb.toString());
-		writer.close();
-		System.out.println("[!] Created: " + filename);
+		Utils.WriteFile(filename, sb.toString());
 		
 		sb.setLength(0); // clear sb
 		sb.append("package " + pkg + ".dao.db2;\n\n");
@@ -263,10 +251,7 @@ public class DAOGenerator {
 		sb.append("}");
 		
 		filename = pkgFolder + "/db2/Db2DAOFactory.java";
-		writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filename)));
-		writer.write(sb.toString());
-		writer.close();
-		System.out.println("[!] Created: " + filename);
+		Utils.WriteFile(filename, sb.toString());
 	}
 	
 	public void writeMainTest(String[] daos, Map<String, Map<String, String>> fieldsFromName) throws IOException {
@@ -303,10 +288,7 @@ public class DAOGenerator {
 		
 		sb.append("\n\t}\n\n\t//Test && Support methods\n\n}");
 		String filename = pkgFolder + "/DAOMainTest.java";
-		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filename)));
-		writer.write(sb.toString());
-		writer.close();
-		System.out.println("[!] Created: " + filename);
+		Utils.WriteFile(filename, sb.toString());
 	}
 
 }

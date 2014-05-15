@@ -13,9 +13,12 @@ public class Main {
 	
 	private static JDBCGenerator jdbcGenerator;
 	private static DAOGenerator daoGenerator;
+	private static HibernateGenerator hibGenerator;
 	private static final String pkgFolder = "src/it/unibo/tw";
 	private static final String pkg = "it.unibo.tw";
 	private static Map<String, Map<String, String>> fieldsFromName;
+	private static Map<String, String> names = new HashMap<String, String>(); // singular, plural
+	private static Map<String, String> constraintsByName = new HashMap<String, String>();
 	
 
 	/* See tables.txt to see a valid syntax example */
@@ -49,7 +52,16 @@ public class Main {
 				daoGenerator = new DAOGenerator(pkgFolder, pkg, tableName, fields, tableNamePlural, constraints);
 				daoGenerator.writeDTO();
 				daoGenerator.writeDAO();
+				// Hibernate
+				hibGenerator = new HibernateGenerator(pkgFolder, pkg, tableName, fields, tableNamePlural, constraints);
+				hibGenerator.writeBeans();
+				hibGenerator.writeCfgsXML();
+				
+				// save associations
 				fieldsFromName.put(tableName.toLowerCase(), new HashMap<String, String>(fields));
+				names.put(tableName, tableNamePlural);
+				constraintsByName.put(tableName.toLowerCase(), new String(constraints));
+				// clear
 				fields.clear();
 			} else { //field
 				String[] field = line.split(" ");
@@ -73,8 +85,16 @@ public class Main {
 		daoGenerator.writeFactories(daoArr);
 		// Create Main
 		daoGenerator.writeMainTest(daoArr, fieldsFromName);
-		System.out.println("Please press F5 in the ecplipse Project.\n"
-				+ "Go into beans and dao folder and: Source -> generate hashCode() and equals()");
+		
+		// JDBC //
+		// Generate Main
+		jdbcGenerator.writeMainTest(names, fieldsFromName);
+		
+		// Hibernate //
+		// Generate Main
+		hibGenerator.writeMainTest(names, fieldsFromName, constraintsByName);
+		System.out.println("Please press F5 in the eclipse Project.\n"
+				+ "Go into models folders (model,dao,hibernate) and: Source -> generate hashCode() and equals()");
 	}
 
 }

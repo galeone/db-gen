@@ -1,9 +1,6 @@
 package it.unibo.tw;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStreamWriter;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
@@ -11,11 +8,11 @@ import java.util.Map.Entry;
 
 public class BeanGenerator {
 	private final String pkgFolder, pkg, date = "import java.util.Date;\n";
-	private final String beansFor;
+	private final String newFolder;
 	
-	public BeanGenerator(String pkgFolder, String pkg, String beansFor) {
-		this.beansFor = beansFor.toLowerCase().trim();
-		this.pkg = "package " + pkg + "." + (beansFor.equals("dao") ? "dao" : "model" ) + ";\n";
+	public BeanGenerator(String pkgFolder, String pkg, String newFolder) {
+		this.newFolder = newFolder.toLowerCase().trim();
+		this.pkg = "package " + pkg + "." + this.newFolder + ";\n";
 		this.pkgFolder = pkgFolder;
 	}
 	
@@ -53,9 +50,10 @@ public class BeanGenerator {
 	
 	public void WriteBean(String tableName, Map<String, String> fields) throws Exception {
 		// Folder
-		boolean dao = this.beansFor.equals("dao");
-		String dest = pkgFolder + "/" + (dao ?  "dao" : "model") + "/";
-		tableName =  tableName + ( dao ? "DTO" : "");
+		String dest = pkgFolder + "/" + this.newFolder + "/";
+		System.out.println(dest);
+		// dao require special naming (e.g. StudentDTO instead of Student)
+		tableName =  tableName + (this.newFolder.equals("dao") ? "DTO" : "");
 		
 		File beansFolder = new File(dest);
 		if(! beansFolder.exists()) {
@@ -108,9 +106,7 @@ public class BeanGenerator {
 		
 		// write file
 		String filename = dest + tableName + ".java";
-		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filename)));
-		writer.write(sb.toString());
-		writer.close();
-		System.out.println("[!] Created: " + filename);
+		Utils.WriteFile(filename, sb.toString());
+
 	}
 }
