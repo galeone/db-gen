@@ -2,7 +2,9 @@ package it.unibo.tw;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 public class DAOGenerator {
 	
@@ -11,13 +13,13 @@ public class DAOGenerator {
 	private Map<String, String> fields;
 	private SQLGenerator sqlGen;
 	
-	public DAOGenerator(String pkgFolder, String pkg, String tableName, Map<String, String> fields, String pluralName, String constraints) {
+	public DAOGenerator(String pkgFolder, String pkg, String tableName, Map<String, String> fields, String pluralName, String constraints, Map<String, String> singlePlural) {
 		beanGenerator = new BeanGenerator(pkgFolder, pkg, "dao");
 		this.pkg = pkg;
 		this.pkgFolder = pkgFolder + "/dao/";
 		this.fields = fields;
 		this.tableName = tableName;
-		this.sqlGen = new SQLGenerator(fields, pluralName, tableName, constraints);
+		this.sqlGen = new SQLGenerator(fields, pluralName, tableName, constraints, singlePlural);
 	}
 	
 	public void writeDTO() throws Exception {
@@ -64,7 +66,7 @@ public class DAOGenerator {
 		sb.setLength(0); // clear sb
 		sb.append("package " + pkg + ".dao.db2;\n\n");
 		sb.append("import " + pkg + ".dao.*;\n");
-		sb.append("import java.sql.Connection;\nimport java.sql.PreparedStatement;\nimport java.sql.ResultSet;\nimport java.util.logging.Logger;\n\n");
+		sb.append("import java.sql.Connection;\nimport java.sql.PreparedStatement;\nimport java.sql.Statement;\nimport java.sql.ResultSet;\nimport java.util.logging.Logger;\n\n");
 		sb.append("public class Db2" + dao + " implements " + dao+  " {\n");
 		sb.append("\tLogger logger = Logger.getLogger( getClass().getCanonicalName() );\n\n");
 		sb.append(sqlGen.getSQLConstants());
@@ -159,7 +161,7 @@ public class DAOGenerator {
 		sb.append("\t\tboolean result = false;\n");
 		sb.append("\t\tConnection conn = Db2DAOFactory.createConnection();\n\n");
 		sb.append("\t\ttry {\n");
-		sb.append("\t\t\tPreparedStatement statement = conn.prepareStatement(create);\n");
+		sb.append("\t\t\tStatement statement = conn.createStatement();\n");
 		sb.append("\t\t\tstatement.execute(create);\n");
 		sb.append("\t\t\tresult = true;\n");
 		sb.append("\t\t\tstatement.close();\n");
@@ -174,7 +176,7 @@ public class DAOGenerator {
 		sb.append("\t\tboolean result = false;\n");
 		sb.append("\t\tConnection conn = Db2DAOFactory.createConnection();\n\n");
 		sb.append("\t\ttry {\n");
-		sb.append("\t\t\tPreparedStatement statement = conn.prepareStatement(drop);\n");
+		sb.append("\t\t\tStatement statement = conn.createStatement();\n");
 		sb.append("\t\t\tstatement.execute(drop);\n");
 		sb.append("\t\t\tresult = true;\n");
 		sb.append("\t\t\tstatement.close();\n");
@@ -191,7 +193,7 @@ public class DAOGenerator {
 		Utils.WriteFile(filename, sb.toString());
 	}
 	
-	void writeFactories(String[] daos) throws IOException {
+	void writeFactories(List<Entry<String, String>> daos) throws IOException {
 		// DAOFactory (abstract)
 		StringBuilder sb = new StringBuilder("package " + pkg + ".dao;\n\n");
 		sb.append("import " + pkg + ".dao.db2.Db2DAOFactory;\n\n");
@@ -204,7 +206,8 @@ public class DAOGenerator {
 		sb.append("\t\tdefault:\n");
 		sb.append("\t\t\treturn null;\n");
 		sb.append("\t\t}\n\t}\n\n");
-		for(String d : daos ) {
+		for(Entry<String, String> dao : daos ) {
+			String d = dao.getKey();
 			sb.append("\tpublic abstract " + d + " get" + d + "();\n");
 		}
 		sb.append("}");
@@ -244,7 +247,8 @@ public class DAOGenerator {
 		sb.append("\t\t\te.printStackTrace();\n");
 		sb.append("\t\t}\n\t}\n\n");
 		sb.append("\t//Override abstract methods\n\n");
-		for(String d : daos) {
+		for(Entry<String, String> dao : daos ) {
+			String d = dao.getKey();
 			sb.append("\t@Override\n\tpublic " + d + " get" + d + "() {\n");
 			sb.append("\t\treturn new Db2" + d + "();\n\t}\n\n");
 		}
@@ -254,7 +258,7 @@ public class DAOGenerator {
 		Utils.WriteFile(filename, sb.toString());
 	}
 	
-	public void writeMainTest(String[] daos, Map<String, Map<String, String>> fieldsFromName) throws IOException {
+	public void writeMainTest(List<Entry<String, String>> daos, Map<String, Map<String, String>> fieldsFromName) throws IOException {
 		StringBuilder sb = new StringBuilder("package " + pkg + ".dao;\n\n");
 		sb.append("import java.util.Calendar;\n\n");
 		sb.append("public class DAOMainTest {\n");
@@ -264,7 +268,8 @@ public class DAOGenerator {
 		sb.append("\t\tCalendar cal;\n\n");
 		char varName = 'a';
 		Map<String, String> fields;
-		for(String d : daos) {
+		for(Entry<String, String> dao : daos) {
+			String d = dao.getKey();
 			String var = d.toLowerCase();
 			sb.append("\t\t" + d);
 			sb.append(" ");

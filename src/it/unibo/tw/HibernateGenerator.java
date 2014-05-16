@@ -3,6 +3,7 @@ package it.unibo.tw;
 import java.io.File;
 import java.io.IOException;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
@@ -11,17 +12,18 @@ public class HibernateGenerator {
 	
 	private BeanGenerator beanGenerator;
 	private String pkg, pkgFolder, tableName, pluralName;
-	private Map<String, String> fields;
+	private Map<String, String> fields, singlePlural;
 	private SQLGenerator sqlGen;
 	
-	public HibernateGenerator(String pkgFolder, String pkg, String tableName, Map<String, String> fields, String pluralName, String constraints) {
+	public HibernateGenerator(String pkgFolder, String pkg, String tableName, Map<String, String> fields, String pluralName, String constraints, Map<String, String> singlePlural) {
 		beanGenerator = new BeanGenerator(pkgFolder, pkg, "hibernate");
 		this.pkg = pkg;
 		this.pkgFolder = pkgFolder + "/hibernate/";
 		this.fields = fields;
 		this.tableName = tableName;
 		this.pluralName = pluralName;
-		this.sqlGen = new SQLGenerator(fields, pluralName, tableName, constraints);
+		this.singlePlural = singlePlural;
+		this.sqlGen = new SQLGenerator(fields, pluralName, tableName, constraints, singlePlural);
 	}
 	
 	public void writeBeans() throws Exception {
@@ -73,11 +75,12 @@ public class HibernateGenerator {
 		Utils.WriteFile("src/hibernate.cfg.xml", sb.toString());
 	}
 	
-	public void writeMainTest(Map<String, String> models, Map<String, Map<String, String>> fieldsFromName, Map<String, String> constraintsByName) throws IOException {
+	public void writeMainTest(List<Entry<String, String>> models, Map<String, Map<String, String>> fieldsFromName, Map<String, String> constraintsByName) throws IOException {
 		StringBuilder sb = new StringBuilder("package " + pkg + ".hibernate;\n\n");
 		sb.append("import java.sql.Connection;\n");
 		sb.append("import java.sql.DriverManager;\n");
 		sb.append("import java.sql.Statement;\n");
+		sb.append("import java.util.Calendar;\n");
 		sb.append("import org.hibernate.Query;\n");
 		sb.append("import org.hibernate.Session;\n");
 		sb.append("import org.hibernate.SessionFactory;\n");
@@ -87,19 +90,22 @@ public class HibernateGenerator {
 		sb.append("public class HibernateMainTest {\n");	
 		//sql statements
 		Queue<String> tableNames = new LinkedList<String>();
-		String constantsToAppend = ""; // remove duplicate id
-		int counter = 0;
-		for(Entry<String, String> entry : models.entrySet()) {
+		//remove repeated id declaration
+		String constantsToAppend = "";
+		boolean skipId = false;
+		for(Entry<String, String> entry : models) {
 			String singular = entry.getKey(), plural = entry.getValue();
-			sqlGen = new SQLGenerator(fieldsFromName.get(singular.toLowerCase()), plural, singular, constraintsByName.get(singular.toLowerCase()));
-			constantsToAppend += sqlGen.getConstantFieldsName(counter != 0);
-			counter = 1;
+			sqlGen = new SQLGenerator(fieldsFromName.get(singular.toLowerCase()), plural, singular, constraintsByName.get(singular.toLowerCase()), singlePlural);
+			constantsToAppend += sqlGen.getConstantFieldsName(skipId);
+			skipId = true;
 		}
-		//remove repeated id delclareation
+
 		sb.append(constantsToAppend);
-		for(Entry<String, String> entry : models.entrySet()) {
+		
+		// append with correct order
+		for(Entry<String, String> entry : models) {
 			String singular = entry.getKey(), plural = entry.getValue();
-			sqlGen = new SQLGenerator(fieldsFromName.get(singular.toLowerCase()), plural, singular, constraintsByName.get(singular.toLowerCase()));
+			sqlGen = new SQLGenerator(fieldsFromName.get(singular.toLowerCase()), plural, singular, constraintsByName.get(singular.toLowerCase()), singlePlural);
 			String newTableName = "TABLE_" +  plural.toUpperCase();
 			tableNames.add(newTableName);
 			sb.append(sqlGen.getTableNameDropAndCreateStatements().replace("TABLE =", newTableName+ " = ").replace("+ TABLE", "+ " +newTableName ).replace("String create", "String CREATE_" + newTableName).replace("String drop", "String DROP_" + newTableName));
@@ -137,18 +143,27 @@ public class HibernateGenerator {
 		sb.append("\t\t// Insert entries\n");
 		sb.append("\t\ttry {\n");
 		sb.append("\t\t\tsession = sessionFactory.openSession();\n");
-		sb.append("\t\t\ttx = session.beginTransaction();\n\n");
+		sb.append("\t\t\ttx = session.beginTransaction();\n");
+		sb.append("\t\t\tCalendar cal = null;\n\n");
 		
 		char varName = 'a';
-		for(Entry<String, String> entry : models.entrySet()) {
+		for(Entry<String, String> entry : models) {
 			String singular = entry.getKey(), plural = entry.getValue();
-			sqlGen = new SQLGenerator(fieldsFromName.get(singular.toLowerCase()), plural, singular, constraintsByName.get(singular.toLowerCase()));
+			sqlGen = new SQLGenerator(fieldsFromName.get(singular.toLowerCase()), plural, singular, constraintsByName.get(singular.toLowerCase()), singlePlural);
 		
 			// create 3 instance
 			for(int i=0;i<2;++i) {
 				String objName = varName + "" + i;
 				sb.append("\t\t\t" + singular + " "+ objName + " = new " + singular + "();\n");
-				sb.append(sqlGen.getObjectInit(objName, fields));
+				// Hibernate handle setId automatically
+				String[] setofSet = sqlGen.getObjectInit(objName, fieldsFromName.get(singular.toLowerCase())).split("\n");
+				for(String set : setofSet) {
+					if(!set.contains("setId(")) {
+						sb.append("\t");
+						sb.append(set);
+						sb.append("\n");
+					}
+				}
 				sb.append("\t\t\tsession.saveOrUpdate(" + objName + ");\n\n");
 			}
 			varName++;

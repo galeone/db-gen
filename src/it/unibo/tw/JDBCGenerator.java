@@ -1,6 +1,7 @@
 package it.unibo.tw;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -9,10 +10,10 @@ public class JDBCGenerator {
 	private BeanGenerator beanGenerator;
 	private ManagerGenerator managerGenerator;
 	private String tableName, pluralName, constraints, pkg, pkgFolder;
-	private Map<String, String> fields;
+	private Map<String, String> fields, singlePlural;
 	private SQLGenerator sqlGen;
 	
-	public JDBCGenerator(String pkgFolder, String pkg, String tableName, Map<String, String> fields, String pluralName, String constraints) {
+	public JDBCGenerator(String pkgFolder, String pkg, String tableName, Map<String, String> fields, String pluralName, String constraints, Map<String, String> singlePlural) {
 		beanGenerator = new BeanGenerator(pkgFolder, pkg, "model");
 		managerGenerator = new ManagerGenerator(pkgFolder, pkg);
 		this.tableName = tableName;
@@ -21,7 +22,8 @@ public class JDBCGenerator {
 		this.pluralName = pluralName;
 		this.pkgFolder = pkgFolder;
 		this.pkg = pkg;
-		this.sqlGen = new SQLGenerator(fields, pluralName, tableName, constraints);
+		this.singlePlural = singlePlural;
+		this.sqlGen = new SQLGenerator(fields, pluralName, tableName, constraints, singlePlural);
 
 	}
 	
@@ -30,10 +32,10 @@ public class JDBCGenerator {
 	}
 	
 	public void  writeManager() throws IOException {
-		managerGenerator.writeManager(tableName, pluralName, fields, constraints);
+		managerGenerator.writeManager(tableName, pluralName, fields, constraints, singlePlural);
 	}
 	
-	public void writeMainTest(Map<String, String> models, Map<String, Map<String, String>> fieldsFromName) throws IOException {
+	public void writeMainTest(List<Entry<String, String>> models, Map<String, Map<String, String>> fieldsFromName) throws IOException {
 		StringBuilder sb = new StringBuilder("package " + pkg + ".db;\n\n");
 		sb.append("import " + pkg + ".model.*;\n");
 		sb.append("import java.util.Calendar;\n\n");
@@ -42,7 +44,7 @@ public class JDBCGenerator {
 		sb.append("\t\tCalendar cal;\n\n");
 		char varName = 'a';
 		Map<String, String> fields;
-		for(Entry<String, String>  entry : models.entrySet()) {
+		for(Entry<String, String>  entry : models) {
 			String d = entry.getKey(); // singular name
 			String var = "manage" +d.toLowerCase();
 			String plural = entry.getValue();//plural

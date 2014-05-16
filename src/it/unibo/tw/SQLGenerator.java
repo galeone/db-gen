@@ -11,12 +11,14 @@ public class SQLGenerator {
 	private String pluralName, constraints, singleName;
 	private String sqlStatements;
 	private Map<String, Integer> insertPositions, updatePositions;
+	private Map<String, String> singlePlural;
 	
-	public SQLGenerator(Map<String, String> fields, String pluralName, String singleName, String constraints) {
+	public SQLGenerator(Map<String, String> fields, String pluralName, String singleName, String constraints, Map<String, String> singlePlural) {
 		this.fields = fields;
 		this.pluralName = pluralName;
 		this.singleName = singleName;
 		this.constraints = constraints;
+		this.singlePlural = singlePlural;
 		generate();
 	}
 	
@@ -33,20 +35,20 @@ public class SQLGenerator {
 			String name = field.getKey().toUpperCase();
 			String type = field.getValue().toUpperCase();
 			if(type.equals("STRING")) {
-				type = "VARCHAR(50)";
+				type = " VARCHAR(50)";
 			} // date ok, double ok, boolean ok
 			String elem = "";
 			// Foreign key
 			if(name.indexOf("ID") == 0){
-				elem = name + "+ \"BIGINT NOT NULL ";
+				elem = name + "+ \" BIGINT NOT NULL ";
 				if(name.equals("ID")) { //primary key
 					elem += "PRIMARY KEY";
 				}
 				else { // foreign key
-					elem += "REFERENCES " + name.substring(2);
+					elem += "REFERENCES " + singlePlural.get(field.getKey().replace("id", ""));
 				}
 			} else { // no  key
-				elem = name + "+ \"" + type + " NOT NULL"; 
+				elem = name + "+ \" " + type + " NOT NULL"; 
 			}
 			sb.append( "\t\t\t" + elem + ", \" +\n" );
 		}
@@ -72,7 +74,7 @@ public class SQLGenerator {
 				}
 			} else { // no  key - element
 				sb.append("\t<property column=\"" + name + "\" name=\"");
-				sb.append(field.getKey() + "\" type=\"" + type + "\"");
+				sb.append(field.getKey() + "\" type=\"" + type.toLowerCase() + "\"");
 				if(type.toLowerCase().equals("string")) {
 					sb.append(" length=\"50\"");
 				}

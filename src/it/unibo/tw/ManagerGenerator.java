@@ -13,7 +13,7 @@ public class ManagerGenerator {
 		this.pkgFolder = pkgFolder;
 	}
 	
-	public void writeManager(String singleName, String pluralName, Map<String, String> fields, String constraints) throws IOException {
+	public void writeManager(String singleName, String pluralName, Map<String, String> fields, String constraints, Map<String, String> singlePlural) throws IOException {
 		File managersFolder = new File(pkgFolder + "/db/");
 		if(! managersFolder.exists()) {
 			managersFolder.mkdir();
@@ -30,7 +30,7 @@ public class ManagerGenerator {
 		sb.append("\tprivate DataSource dataSource;\n\n");
 		sb.append("\tpublic " + className + "() {\n");
 		sb.append("\t\tthis.dataSource = new DataSource(DataSource.DB2);\n\t}\n\n");
-		SQLGenerator sqlGen = new SQLGenerator(fields, pluralName, singleName, constraints);
+		SQLGenerator sqlGen = new SQLGenerator(fields, pluralName, singleName, constraints, singlePlural);
 		sb.append(sqlGen.getSQLConstants());
 		sb.append("//\t\tMETHODS\n\n");
 		// methods
