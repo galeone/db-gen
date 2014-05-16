@@ -278,14 +278,15 @@ public class DAOGenerator {
 			sb.append("\t\t" + var + ".dropTable();\n");
 			sb.append("\t\t" + var + ".createTable();\n\n");
 			
-			fields = fieldsFromName.get(d.replace("DAO", "").toLowerCase()); 
+			String typeNameWithoutDAO = d.replace("DAO", "");
+			fields = fieldsFromName.get(typeNameWithoutDAO.toLowerCase()); 
 			
 			// create 2 instance
 			for(int i=0;i<2;++i) {
 				String dto = d.replace("DAO", "DTO");
 				String objName = varName + "" + i;
 				sb.append("\t\t" + dto + " "+ objName + " = new " + dto + "();\n");
-				sb.append(sqlGen.getObjectInit(objName, fields));
+				sb.append(sqlGen.getObjectInit(objName, fields, typeNameWithoutDAO));
 				sb.append("\t\t" + var + ".create(" + objName + ");\n\n");
 			}
 			varName++;

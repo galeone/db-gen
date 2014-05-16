@@ -1,6 +1,8 @@
 package it.unibo.tw;
 
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
@@ -12,6 +14,8 @@ public class SQLGenerator {
 	private String sqlStatements;
 	private Map<String, Integer> insertPositions, updatePositions;
 	private Map<String, String> singlePlural;
+	private Map<String, List<String>> 	typeIDsAssociations = new HashMap<String, List<String>>();
+	private Integer randomNumber;
 	
 	public SQLGenerator(Map<String, String> fields, String pluralName, String singleName, String constraints, Map<String, String> singlePlural) {
 		this.fields = fields;
@@ -19,7 +23,8 @@ public class SQLGenerator {
 		this.singleName = singleName;
 		this.constraints = constraints;
 		this.singlePlural = singlePlural;
-		generate();
+		randomNumber = new Random(System.currentTimeMillis()).nextInt(20);
+		generate();	
 	}
 	
 	private String getTableNameStatement() {
@@ -172,26 +177,48 @@ public class SQLGenerator {
 	}
 	
 	public String getObjectInit(String objName, Map<String, String> fields) {
+		return getObjectInit(objName, fields, "");
+	}
+	
+	public String getObjectInit(String objName, Map<String, String> fields, String objType) {
 		String ret = "";
-		Random r = new Random();
-		r.setSeed(r.nextLong());
+		// References are valid only for dao and jdbc, hibernate needs other
+		boolean hibernate = objType.equals("");
 		
 		for(Entry<String, String> field : fields.entrySet()) {
 			String name = Utils.UcFirst(field.getKey()), type = field.getValue().toLowerCase();
-			if(type.equals("date")) {
-				ret += "\t\tcal = Calendar.getInstance();\n";
-				ret += "\t\tcal.set(2014,Calendar.JUNE," + (r.nextInt(27) +1) + ");\n";
-				ret += "\t\t" + objName + ".set" + name + "(cal.getTime());\n";
-			} else if(type.equals("string")) {
-				ret += "\t\t" + objName + ".set" + name + "(\"" + name + (r.nextInt(30) + 1) + "\");\n";
-			} else if(type.equals("long")) {
-				ret += "\t\t" + objName + ".set" + name + "(" + (r.nextInt(100) +1) + "L);\n";
-			} else if(type.equals("double")) {
-				ret += "\t\t" + objName + ".set" + name + "(" + (r.nextInt(100) +1) + "d);\n";
-			} else {
-				ret += "\t\t" + objName + ".set" + name + "(" + (r.nextInt(100) +1) + ");\n";
+			String id =  "" + (randomNumber++);
+			// save id value for this type
+			if(!hibernate && name.toLowerCase().equals("id")) {
+				if(typeIDsAssociations.get(objType) == null) {
+					typeIDsAssociations.put(objType, new LinkedList<String>());
+				}
+				typeIDsAssociations.get(objType).add(id);
 			}
-			r.setSeed(r.nextLong());
+			ret += "\t\t";
+			String common = objName + ".set" + name + "(";
+			if(type.equals("date")) {
+				ret += "cal = Calendar.getInstance();\n";
+				ret += "\t\tcal.set(2014,Calendar.JUNE," + (new Random(System.currentTimeMillis()).nextInt(27) +1) + ");\n";
+				ret += "\t\t" + common + "cal.getTime());\n";
+			} else if(type.equals("string")) {
+				ret += common + "\"" + name + (randomNumber++) + "\");\n";
+			} else if(type.equals("long")) { // ids always long
+				ret += common;
+				// setIdXXX
+				String nameLC = name.toLowerCase();
+				if(!hibernate && nameLC.startsWith("id") && !nameLC.equals("id")) {
+					id = typeIDsAssociations.get(name.substring(2)).get(0);
+					typeIDsAssociations.get(name.substring(2)).remove(0);
+				}
+				ret += id + "L);\n";
+			} else if(type.equals("double")) {
+				ret += common + (randomNumber++) + "d);\n";
+			} else if(type.equals("boolean")) {
+				ret += common + (randomNumber++) + ");\n";
+			} else {
+				ret += common + (randomNumber++) + ");\n";
+			}
 		}
 		return ret;
 	}

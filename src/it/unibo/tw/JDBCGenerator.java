@@ -24,7 +24,6 @@ public class JDBCGenerator {
 		this.pkg = pkg;
 		this.singlePlural = singlePlural;
 		this.sqlGen = new SQLGenerator(fields, pluralName, tableName, constraints, singlePlural);
-
 	}
 	
 	public void writeBean() throws Exception {
@@ -58,7 +57,7 @@ public class JDBCGenerator {
 			for(int i=0;i<2;++i) {
 				String objName = varName + "" + i;
 				sb.append("\t\t" + d + " "+ objName + " = new " + d + "();\n");
-				sb.append(sqlGen.getObjectInit(objName, fields));
+				sb.append(sqlGen.getObjectInit(objName, fields, d));
 				sb.append("\t\t" + var + ".insert(" + objName + ");\n\n");
 			}
 			varName++;
