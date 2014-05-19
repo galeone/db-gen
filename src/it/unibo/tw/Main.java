@@ -48,7 +48,7 @@ public class Main {
 				keys[i] = "id" + key;
 			}
 		}
-		constraints = contraintType + " ( " + String.join(", ", keys) + " )";
+		constraints = contraintType + " ( " + Utils.joinString(", ", keys) + " )";
 	}
 	
 	private static void getTableName() {
@@ -63,7 +63,7 @@ public class Main {
 	private static void saveField() {
 		String[] field = line.trim().split(" ");
 		// Name, Type [ FK REFERENCES <Tablename> ]
-		String typeAndRef = String.join(" ", Arrays.copyOfRange(field, 1, field.length));
+		String typeAndRef = Utils.joinString(" ", Arrays.copyOfRange(field, 1, field.length));
 		fields.put( Utils.UcFirst(field[0].trim()), Utils.UcFirst(typeAndRef.trim()));
 	}
 	
