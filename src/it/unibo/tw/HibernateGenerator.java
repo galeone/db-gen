@@ -2,20 +2,24 @@ package it.unibo.tw;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.Queue;
 
 public class HibernateGenerator {
 	
 	private BeanGenerator beanGenerator;
-	private String pkg, pkgFolder, tableName, pluralName;
+	private String pkg, pkgFolder, tableName, pluralName, username, password;
 	private Map<String, String> fields, singlePlural;
 	private SQLGenerator sqlGen;
 	
-	public HibernateGenerator(String pkgFolder, String pkg, String tableName, Map<String, String> fields, String pluralName, String constraints, Map<String, String> singlePlural) {
+	public HibernateGenerator(String pkgFolder, String pkg, String tableName, Map<String, String> fields, String pluralName, String constraints, Map<String, String> singlePlural, String username, String password) {
 		beanGenerator = new BeanGenerator(pkgFolder, pkg, "hibernate");
 		this.pkg = pkg;
 		this.pkgFolder = pkgFolder + "/hibernate/";
@@ -24,13 +28,15 @@ public class HibernateGenerator {
 		this.pluralName = pluralName;
 		this.singlePlural = singlePlural;
 		this.sqlGen = new SQLGenerator(fields, pluralName, tableName, constraints, singlePlural);
+		this.username = username;
+		this.password = password;
 	}
 	
 	public void writeBeans() throws Exception {
 		beanGenerator.WriteBean(tableName, fields);
 	}
 	
-	private void writeModelCfgs() throws Exception {
+	public void writeModelCfg() throws Exception {
 		StringBuilder sb = new StringBuilder("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE hibernate-mapping PUBLIC\n");
 		sb.append("\t\"-//Hibernate/Hibernate Mapping DTD 3.0//EN\"\n");
 		sb.append("\t\"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd\">\n\n");
@@ -41,10 +47,7 @@ public class HibernateGenerator {
 		Utils.WriteFile(pkgFolder + tableName + ".hbm.xml", sb.toString());
 	}
 	
-	public void writeCfgsXML() throws Exception {
-		writeModelCfgs();
-		// entity xml generation
-		// main cfg file generation
+	public void writeCfgXML() throws Exception {
 		StringBuilder sb = new StringBuilder("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE hibernate-configuration PUBLIC\n");
 		sb.append("\t\"-//Hibernate/Hibernate Configuration DTD 3.0//EN\"\n");
 		sb.append("\t\"http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd\">\n\n");
@@ -52,8 +55,8 @@ public class HibernateGenerator {
 		sb.append("<hibernate-configuration>\n\t<session-factory>\n\t\t<!-- Database connection settings -->\n");
 		sb.append("\t\t<property name=\"connection.driver_class\">com.ibm.db2.jcc.DB2Driver</property>\n");
 		sb.append("\t\t<property name=\"connection.url\">jdbc:db2://diva.deis.unibo.it:50000/tw_stud</property>\n");
-		sb.append("\t\t<property name=\"connection.username\">xxx</property>\n");
-		sb.append("\t\t<property name=\"connection.password\">xxx</property>\n");
+		sb.append("\t\t<property name=\"connection.username\">"+ username + "</property>\n");
+		sb.append("\t\t<property name=\"connection.password\">"+ password +"</property>\n");
 		sb.append("\t\t<property name=\"connection.pool_size\">1</property>\n");
 		sb.append("\t\t<property name=\"dialect\">org.hibernate.dialect.DB2Dialect</property>\n");
 		sb.append("\t\t<!-- <property name=\"dialect\">org.hibernate.dialect.HSQLDialect</property> -->\n");
@@ -75,7 +78,7 @@ public class HibernateGenerator {
 		Utils.WriteFile("src/hibernate.cfg.xml", sb.toString());
 	}
 	
-	public void writeMainTest(List<Entry<String, String>> models, Map<String, Map<String, String>> fieldsFromName, Map<String, String> constraintsByName) throws IOException {
+	public void writeMainTest(List<Entry<String, String>> models, Map<String, Map<String, String>> fieldsFromName, Map<String, String> constraintsByName, Map <String, Entry<String, Entry<String, String>>> relations) throws IOException {
 		StringBuilder sb = new StringBuilder("package " + pkg + ".hibernate;\n\n");
 		sb.append("import java.sql.Connection;\n");
 		sb.append("import java.sql.DriverManager;\n");
@@ -105,10 +108,16 @@ public class HibernateGenerator {
 		// append with correct order
 		for(Entry<String, String> entry : models) {
 			String singular = entry.getKey(), plural = entry.getValue();
-			sqlGen = new SQLGenerator(fieldsFromName.get(singular.toLowerCase()), plural, singular, constraintsByName.get(singular.toLowerCase()), singlePlural);
+			String constraints = constraintsByName.get(singular.toLowerCase());
+			sqlGen = new SQLGenerator(fieldsFromName.get(singular.toLowerCase()), plural, singular, constraints, singlePlural);
 			String newTableName = "TABLE_" +  plural.toUpperCase();
 			tableNames.add(newTableName);
-			sb.append(sqlGen.getTableNameDropAndCreateStatements().replace("TABLE =", newTableName+ " = ").replace("+ TABLE", "+ " +newTableName ).replace("String create", "String CREATE_" + newTableName).replace("String drop", "String DROP_" + newTableName));
+			String stmt = sqlGen.getTableNameDropAndCreateStatements().replace("TABLE =", newTableName+ " = ").replace("+ TABLE", "+ " +newTableName ).replace("String create", "String CREATE_" + newTableName).replace("String drop", "String DROP_" + newTableName);
+			System.err.println(stmt);
+			//if("".equals(constraints)) {
+			//	stmt = stmt.substring(0, stmt.lastIndexOf(",")) + ")\";\n";
+			//}
+			sb.append(stmt);
 		}
 		sb.append("\tpublic static void main(String[] args) {\n\n");
 		sb.append("\t\tSessionFactory sessionFactory = new Configuration().configure().buildSessionFactory();\n");
@@ -121,7 +130,7 @@ public class HibernateGenerator {
 		sb.append("\t\t\t//Remote DB2 tw_stud connection\n");
 		sb.append("\t\t\tClass.forName(\"com.ibm.db2.jcc.DB2Driver\");\n");
 		sb.append("\t\t\tString url = \"jdbc:db2://diva.deis.unibo.it:50000/tw_stud\";\n\n");
-		sb.append("\t\t\tString username = \"xxx\";\n\t\t\tString password = \"xxx\";\n\n");
+		sb.append("\t\t\tString username = \""+username + "\";\n\t\t\tString password = \""+password+"\";\n\n");
 		sb.append("\t\t\tConnection conn = DriverManager.getConnection(url, username, password);\n");
 		sb.append("\t\t\tStatement st = conn.createStatement();\n\n");
 		
@@ -146,22 +155,43 @@ public class HibernateGenerator {
 		sb.append("\t\t\ttx = session.beginTransaction();\n");
 		sb.append("\t\t\tCalendar cal = null;\n\n");
 		
+		Map<String, LinkedList<String>> objTypeAssoc = new HashMap<String, LinkedList<String>>();
+		// Type XXX elements(a1,a2, ecc)
 		char varName = 'a';
 		for(Entry<String, String> entry : models) {
 			String singular = entry.getKey(), plural = entry.getValue();
+			// Skip generation of Entity relations that in hibernate are handled with sets (N:M)
+			if(relations.get(plural) != null) {
+				continue;
+			}
 			sqlGen = new SQLGenerator(fieldsFromName.get(singular.toLowerCase()), plural, singular, constraintsByName.get(singular.toLowerCase()), singlePlural);
-		
-			// create 3 instance
+			objTypeAssoc.put(singular, new LinkedList<String>());
+			
+			// create 2 instances
 			for(int i=0;i<2;++i) {
 				String objName = varName + "" + i;
+				objTypeAssoc.get(singular).add(objName);
 				sb.append("\t\t\t" + singular + " "+ objName + " = new " + singular + "();\n");
 				// Hibernate handle setId automatically
 				String[] setofSet = sqlGen.getObjectInit(objName, fieldsFromName.get(singular.toLowerCase())).split("\n");
+				List<String> relationSet = new ArrayList<String>();
 				for(String set : setofSet) {
-					if(!set.contains("setId(")) {
-						sb.append("\t");
-						sb.append(set);
-						sb.append("\n");
+					boolean pk = set.contains("setId("); // skip primary key (hibernate handled)
+					Pattern p = Pattern.compile("setId([^\\(]+)");
+					Matcher m = p.matcher(set);
+					if(!pk) {
+						if(m.find()) { // 1:N relation, foreign key case
+							// setIdXXX(precedentElementOfThisType.getId());
+							sb.append("\t\t\t" + objName+ ".setId" + m.group(1) + "(");
+							sb.append(objTypeAssoc.get(m.group(1)).pop());
+							sb.append(".getId());\n");
+							relationSet.add(m.group(1));
+							System.out.println(m.group(1));
+						} else {
+							sb.append("\t");
+							sb.append(set);
+							sb.append("\n");
+						}
 					}
 				}
 				sb.append("\t\t\tsession.saveOrUpdate(" + objName + ");\n\n");
@@ -179,7 +209,7 @@ public class HibernateGenerator {
 		sb.append("\t\t\tsession.close();\n\t\t}\n\n");
 		sb.append("\t\t//Queries\n\n");
 		sb.append("\t\ttry {}\n\t\tcatch (Exception e1) {\n\t\t\te1.printStackTrace();\n");
-		sb.append("\t\t} finally {\n\t\t\tsession.close();\n\t\t}\t}\n}");
+		sb.append("\t\t} finally {\n\t\t\tsession.close();\n\t\t}\n\t}\n}");
 		
 		Utils.WriteFile(pkgFolder + "HibernateMainTest.java", sb.toString());
 	}

@@ -9,11 +9,11 @@ public class JDBCGenerator {
 	
 	private BeanGenerator beanGenerator;
 	private ManagerGenerator managerGenerator;
-	private String tableName, pluralName, constraints, pkg, pkgFolder;
+	private String tableName, pluralName, constraints, pkg, pkgFolder, username, password;
 	private Map<String, String> fields, singlePlural;
 	private SQLGenerator sqlGen;
 	
-	public JDBCGenerator(String pkgFolder, String pkg, String tableName, Map<String, String> fields, String pluralName, String constraints, Map<String, String> singlePlural) {
+	public JDBCGenerator(String pkgFolder, String pkg, String tableName, Map<String, String> fields, String pluralName, String constraints, Map<String, String> singlePlural, String username, String password) {
 		beanGenerator = new BeanGenerator(pkgFolder, pkg, "model");
 		managerGenerator = new ManagerGenerator(pkgFolder, pkg);
 		this.tableName = tableName;
@@ -24,14 +24,46 @@ public class JDBCGenerator {
 		this.pkg = pkg;
 		this.singlePlural = singlePlural;
 		this.sqlGen = new SQLGenerator(fields, pluralName, tableName, constraints, singlePlural);
+		this.username = username;
+		this.password = password;
 	}
 	
 	public void writeBean() throws Exception {
 		beanGenerator.WriteBean(tableName, fields);
 	}
 	
-	public void  writeManager() throws IOException {
+	public void writeManager() throws IOException {
 		managerGenerator.writeManager(tableName, pluralName, fields, constraints, singlePlural);
+	}
+	
+	public void writeDataSource() throws Exception {
+		StringBuilder sb = new StringBuilder("package " + pkg + ".db;\n\nimport java.sql.*;\n\npublic class DataSource {\n\n");
+		sb.append("\t//DBMS\n\tprivate int usedDb;\n\n\t//name\n\tprivate String dbName = \"tw_stud\";\n\tpublic final static int DB2 = 0;\n\n");
+		sb.append("\tpublic DataSource(int databaseType){\n\t\tthis.usedDb = databaseType;\n\t}\n\n");
+		sb.append("\tpublic Connection getConnection() throws PersistenceException {\n");
+		sb.append("\t\tString driver, dbUri, userName = \"\", password = \"\";\n\n");
+		sb.append("\t\tswitch ( this.usedDb ) {\n");
+		sb.append("\t\t\tcase DB2:\n");
+		sb.append("\t\t\t\tuserName = \""+username+"\";\n");
+		sb.append("\t\t\t\tpassword = \"" + password +"\";\n");
+		sb.append("\t\t\t\tdriver = \"com.ibm.db2.jcc.DB2Driver\";\n");
+		sb.append("\t\t\t\tdbUri = \"jdbc:db2://diva.deis.unibo.it:50000/\"+dbName;\n");
+		sb.append("\t\t\t\tbreak;\n");
+		sb.append("\t\t\tdefault:\n");
+		sb.append("\t\t\t\treturn null;\n");
+		sb.append("\t\t}\n");
+		sb.append("\t\tConnection connection = null;\n\t\ttry{\n");
+		sb.append("\t\t\tSystem.out.println(\"DataSource.getConnection() driver = \"+driver);\n");
+		sb.append("\t\t\tClass.forName(driver);\n");
+		sb.append("\t\t\tSystem.out.println(\"DataSource.getConnection() dbUri = \"+dbUri);\n");
+		sb.append("\t\t\tconnection = DriverManager.getConnection(dbUri, userName, password);\n");
+		sb.append("\t\t} catch (ClassNotFoundException e) {\n");
+		sb.append("\t\t\tthrow new PersistenceException(e.getMessage());\n");
+		sb.append("\t\t} catch(SQLException e) {\n");
+		sb.append("\t\t\tthrow new PersistenceException(e.getMessage());\n");
+		sb.append("\t\t}\n");
+		sb.append("\t\treturn connection;\n\t}\n\n}");
+		Utils.WriteFile(pkgFolder + "/db/DataSource.java", sb.toString());
 	}
 	
 	public void writeMainTest(List<Entry<String, String>> models, Map<String, Map<String, String>> fieldsFromName) throws IOException {

@@ -12,14 +12,17 @@ public class DAOGenerator {
 	private String pkg, pkgFolder, tableName;
 	private Map<String, String> fields;
 	private SQLGenerator sqlGen;
+	private String username, password;
 	
-	public DAOGenerator(String pkgFolder, String pkg, String tableName, Map<String, String> fields, String pluralName, String constraints, Map<String, String> singlePlural) {
+	public DAOGenerator(String pkgFolder, String pkg, String tableName, Map<String, String> fields, String pluralName, String constraints, Map<String, String> singlePlural, String username, String password) {
 		beanGenerator = new BeanGenerator(pkgFolder, pkg, "dao");
 		this.pkg = pkg;
 		this.pkgFolder = pkgFolder + "/dao/";
 		this.fields = fields;
 		this.tableName = tableName;
 		this.sqlGen = new SQLGenerator(fields, pluralName, tableName, constraints, singlePlural);
+		this.username = username;
+		this.password = password;
 	}
 	
 	public void writeDTO() throws Exception {
@@ -222,8 +225,8 @@ public class DAOGenerator {
 		sb.append("public class Db2DAOFactory extends DAOFactory {\n\n");
 		sb.append("\tpublic static final String DRIVER = \"com.ibm.db2.jcc.DB2Driver\";\n");
 		sb.append("\tpublic static final String DBURL = \"jdbc:db2://diva.deis.unibo.it:50000/tw_stud\";\n");
-		sb.append("\tpublic static final String USERNAME = \"xxx\";\n");
-		sb.append("\tpublic static final String PASSWORD = \"yyy\";\n");
+		sb.append("\tpublic static final String USERNAME = \""+username+"\";\n");
+		sb.append("\tpublic static final String PASSWORD = \""+password+"\";\n");
 		sb.append("\tstatic {\n");
 		sb.append("\t\ttry {\n");
 		sb.append("\t\t\tClass.forName(DRIVER);\n");

@@ -16,6 +16,7 @@ public class SQLGenerator {
 	private Map<String, String> singlePlural;
 	private Map<String, List<String>> 	typeIDsAssociations = new HashMap<String, List<String>>();
 	private Integer randomNumber;
+	private int idCount = 0;
 	
 	public SQLGenerator(Map<String, String> fields, String pluralName, String singleName, String constraints, Map<String, String> singlePlural) {
 		this.fields = fields;
@@ -36,6 +37,7 @@ public class SQLGenerator {
 		StringBuilder sb = new StringBuilder("\tprivate static final String drop = \"DROP TABLE \" + TABLE;\n");
 		// create
 		sb.append("\tprivate static final String create = \"CREATE TABLE \" + TABLE + \" ( \" + \n");
+		String stmt = "";
 		for(Entry<String, String> field : fields.entrySet()) { 
 			String name = field.getKey().toUpperCase();
 			String type = field.getValue().toUpperCase();
@@ -53,12 +55,20 @@ public class SQLGenerator {
 					elem += "REFERENCES " + singlePlural.get(field.getKey().replace("id", ""));
 				}
 			} else { // no  key
+				if(type.equals("LONG")) {
+					type = "BIGINT";
+				}
 				elem = name + "+ \" " + type + " NOT NULL"; 
 			}
-			sb.append( "\t\t\t" + elem + ", \" +\n" );
+			stmt += "\t\t\t" + elem + ", \" +\n";
 		}
-		sb.append("\t\t\t\"" + constraints.toUpperCase());
-		sb.append(")\";\n\n");
+		
+		if("".equals(constraints)) {
+			sb.append(stmt.substring(0, stmt.lastIndexOf(",")) + ")\";\n\n");
+		} else {
+			sb.append(stmt);
+			sb.append("\t\t\t\"" + constraints.toUpperCase() + ")\";\n\n");
+		}
 		return sb.toString();
 	}
 	
@@ -75,7 +85,16 @@ public class SQLGenerator {
 					// do nothing
 				}
 				else { // foreign key - new set
-					sb.append("\t<!-- insert foreign key reference - set or whatelse -->\n");
+					System.err.println(name);
+					sb.append("\t<!-- Copy this set declaration to  ");
+					sb.append(singlePlural.get(field.getKey().substring(2)));
+					sb.append(".hbm.xml\n\n");
+					sb.append("<set name=\"");
+					sb.append(singlePlural.get(field.getKey().substring(2)));
+					sb.append("\">\n\t<key column=\"");
+					sb.append(field.getKey());
+					sb.append("\" />\n\tone-to-many class=");
+					sb.append("\n-->\n");
 				}
 			} else { // no  key - element
 				sb.append("\t<property column=\"" + name + "\" name=\"");
@@ -103,6 +122,12 @@ public class SQLGenerator {
 				continue;
 			}
 			ret += "\tprivate static final String " + name + " = " + "\"" + name.toLowerCase() + "\";\n";
+		}
+		// Handle special ID (not generated but specified)
+		if(!skipID  && constraints.contains("PRIMARY KEY")) {
+			String id = constraints.replace("PRIMARY KEY", "").trim().toLowerCase();
+			ret += "\tprivate static final String ID = \"" + id + "\";\n";
+			idCount = id.split(",").length;
 		}
 		return ret;
 	}
@@ -137,7 +162,16 @@ public class SQLGenerator {
 		sb.append("?) \";\n");
 		//delete
 		sb.append("\tprivate static final String delete = \"DELETE FROM \"");
-		sb.append(" + TABLE + \" WHERE \" + ID + \" = ?\";\n");
+		sb.append(" + TABLE + \" WHERE \" + ID + \" = ");
+		if(idCount != 0) {
+			sb.append("(");
+			for(int i=0;i<idCount-1;i++) {
+				sb.append("?, ");
+			}
+			sb.append("? )\";\n");
+		} else {
+			sb.append("?\";\n");
+		}
 		//update
 		sb.append("\tprivate static final String update = \"UPDATE \" + TABLE + \" SET ");
 		toAppend = "";
@@ -152,11 +186,29 @@ public class SQLGenerator {
 			updatePositions.put(field.getKey(), howMany);
 		}
 		sb.append(toAppend.substring(0,toAppend.length()-1));
-		sb.append(" WHERE \" + ID + \" = ?\";\n");
+		sb.append(" WHERE \" + ID + \" = ");
+		if(idCount != 0) {
+			sb.append("(");
+			for(int i=0;i<idCount-1;i++) {
+				sb.append("?, ");
+			}
+			sb.append("? )\";\n");
+		} else {
+			sb.append("?\";\n");
+		}
 		howMany++;
 		//updatePositions.put("ID", howMany);
 		//read by id
-		sb.append("\tprivate static final String read_by_id = \"SELECT * FROM \" + TABLE + \" WHERE + \" + ID + \"  = ?\";\n");
+		sb.append("\tprivate static final String read_by_id = \"SELECT * FROM \" + TABLE + \" WHERE + \" + ID + \"  = ");
+		if(idCount != 0) {
+			sb.append("(");
+			for(int i=0;i<idCount-1;i++) {
+				sb.append("?, ");
+			}
+			sb.append("? )\";\n");
+		} else {
+			sb.append("?\";\n");
+		}
 		// Drop and create 
 		sb.append(getDropAndCreateStatements());
 		

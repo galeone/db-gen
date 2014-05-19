@@ -32,7 +32,7 @@ public class ManagerGenerator {
 		sb.append("\t\tthis.dataSource = new DataSource(DataSource.DB2);\n\t}\n\n");
 		SQLGenerator sqlGen = new SQLGenerator(fields, pluralName, singleName, constraints, singlePlural);
 		sb.append(sqlGen.getSQLConstants());
-		sb.append("//\t\tMETHODS\n\n");
+		sb.append("\t\t//METHODS\n\n");
 		// methods
 		
 		// dropAndCreateTable
