@@ -79,26 +79,12 @@ public class SQLGenerator {
 			String name = field.getKey().toUpperCase();
 			String type = field.getValue();
 
-			// Foreign key
+			// Skip keys
 			if(name.indexOf("ID") == 0){
-				if(name.equals("ID")) { //primary key
-					// do nothing
-				}
-				else { // foreign key - new set
-					System.err.println(name);
-					sb.append("\t<!-- Copy this set declaration to  ");
-					sb.append(singlePlural.get(field.getKey().substring(2)));
-					sb.append(".hbm.xml\n\n");
-					sb.append("<set name=\"");
-					sb.append(singlePlural.get(field.getKey().substring(2)));
-					sb.append("\">\n\t<key column=\"");
-					sb.append(field.getKey());
-					sb.append("\" />\n\tone-to-many class=");
-					sb.append("\n-->\n");
-				}
+				continue;
 			} else { // no  key - element
 				sb.append("\t<property column=\"" + name + "\" name=\"");
-				sb.append(field.getKey() + "\" type=\"" + type.toLowerCase() + "\"");
+				sb.append(Utils.LcFirst(field.getKey()) + "\" type=\"" + type.toLowerCase() + "\"");
 				if(type.toLowerCase().equals("string")) {
 					sb.append(" length=\"50\"");
 				}
@@ -260,8 +246,14 @@ public class SQLGenerator {
 				// setIdXXX
 				String nameLC = name.toLowerCase();
 				if(!hibernate && nameLC.startsWith("id") && !nameLC.equals("id")) {
-					id = typeIDsAssociations.get(name.substring(2)).get(0);
-					typeIDsAssociations.get(name.substring(2)).remove(0);
+					List<String> tida = typeIDsAssociations.get(name.substring(2));
+					if(tida == null) {
+						System.err.println("[!!] Type-ID Associations not found for: " + name.substring(2));
+						System.err.println("[!!] Please check the table definition order");
+						System.exit(1);
+					}
+					id = tida.get(0);
+					tida.remove(0);
 				}
 				ret += id + "L);\n";
 			} else if(type.equals("double")) {

@@ -1,7 +1,11 @@
 package it.unibo.tw;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -11,6 +15,15 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.Queue;
+
+import javax.xml.transform.*;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+
+import org.w3c.dom.*;
 
 public class HibernateGenerator {
 	
@@ -78,12 +91,13 @@ public class HibernateGenerator {
 		Utils.WriteFile("src/hibernate.cfg.xml", sb.toString());
 	}
 	
-	public void writeMainTest(List<Entry<String, String>> models, Map<String, Map<String, String>> fieldsFromName, Map<String, String> constraintsByName, Map <String, Entry<String, Entry<String, String>>> relations) throws IOException {
+	public void writeMainTest(List<Entry<String, String>> models, Map<String, Map<String, String>> fieldsFromName, Map<String, String> constraintsByName, Map <String, List<Entry<String, Entry<String, String>>>> relations) throws IOException {
 		StringBuilder sb = new StringBuilder("package " + pkg + ".hibernate;\n\n");
 		sb.append("import java.sql.Connection;\n");
 		sb.append("import java.sql.DriverManager;\n");
 		sb.append("import java.sql.Statement;\n");
 		sb.append("import java.util.Calendar;\n");
+		sb.append("import java.util.HashSet;\n");
 		sb.append("import org.hibernate.Query;\n");
 		sb.append("import org.hibernate.Session;\n");
 		sb.append("import org.hibernate.SessionFactory;\n");
@@ -113,10 +127,6 @@ public class HibernateGenerator {
 			String newTableName = "TABLE_" +  plural.toUpperCase();
 			tableNames.add(newTableName);
 			String stmt = sqlGen.getTableNameDropAndCreateStatements().replace("TABLE =", newTableName+ " = ").replace("+ TABLE", "+ " +newTableName ).replace("String create", "String CREATE_" + newTableName).replace("String drop", "String DROP_" + newTableName);
-			System.err.println(stmt);
-			//if("".equals(constraints)) {
-			//	stmt = stmt.substring(0, stmt.lastIndexOf(",")) + ")\";\n";
-			//}
 			sb.append(stmt);
 		}
 		sb.append("\tpublic static void main(String[] args) {\n\n");
@@ -149,28 +159,53 @@ public class HibernateGenerator {
 		sb.append("\t\t} catch(Exception e) {\n");
 		sb.append("\t\t\te.printStackTrace();\n");
 		sb.append("\t\t} finally {\n\t\t\tsession.close();\n\t\t}\n\n");
+		sb.append("\t\t// Init session\n");
+		sb.append("\t\tsessionFactory = new Configuration().configure().buildSessionFactory();\n");
+		sb.append("\t\tsession = sessionFactory.openSession();\n");
+		sb.append("\t\ttx = null;\n\n");
 		sb.append("\t\t// Insert entries\n");
 		sb.append("\t\ttry {\n");
 		sb.append("\t\t\tsession = sessionFactory.openSession();\n");
 		sb.append("\t\t\ttx = session.beginTransaction();\n");
 		sb.append("\t\t\tCalendar cal = null;\n\n");
 		
-		Map<String, LinkedList<String>> objTypeAssoc = new HashMap<String, LinkedList<String>>();
-		// Type XXX elements(a1,a2, ecc)
+		Map<String, LinkedList<String>> objTypeAssoc = new HashMap<String, LinkedList<String>>(),
+				objTypeAssocFull = new HashMap<String, LinkedList<String>>(); // required for sets
+		// Type fff elements(a1,a2, ecc)
 		char varName = 'a';
 		for(Entry<String, String> entry : models) {
 			String singular = entry.getKey(), plural = entry.getValue();
-			// Skip generation of Entity relations that in hibernate are handled with sets (N:M)
-			if(relations.get(plural) != null) {
+			// Skip generation of Entity relations that in hibernate are handled with
+			// sets (N:M) (join tables)
+			boolean jump = false;
+			for(String relT : new String[] {"n:n-mono", "n:n-bi"}) {
+				jump = false;
+				List<Entry<String, Entry<String, String>>> rel = relations.get(relT);
+				if(rel != null) {
+					for(Entry<String, Entry<String, String>> e : rel) {
+						if(e.getKey().equals(plural)) {
+							jump = true;
+							break;
+						}
+					}
+				}
+				if(jump){
+					break;
+				}
+			}
+			if(jump) {
+				System.out.println("[!] Skipping: " + plural + " in Hibernate main generation");
 				continue;
 			}
+
 			sqlGen = new SQLGenerator(fieldsFromName.get(singular.toLowerCase()), plural, singular, constraintsByName.get(singular.toLowerCase()), singlePlural);
 			objTypeAssoc.put(singular, new LinkedList<String>());
-			
+			objTypeAssocFull.put(singular, new LinkedList<String>());
 			// create 2 instances
 			for(int i=0;i<2;++i) {
 				String objName = varName + "" + i;
 				objTypeAssoc.get(singular).add(objName);
+				objTypeAssocFull.get(singular).add(objName);
 				sb.append("\t\t\t" + singular + " "+ objName + " = new " + singular + "();\n");
 				// Hibernate handle setId automatically
 				String[] setofSet = sqlGen.getObjectInit(objName, fieldsFromName.get(singular.toLowerCase())).split("\n");
@@ -186,7 +221,6 @@ public class HibernateGenerator {
 							sb.append(objTypeAssoc.get(m.group(1)).pop());
 							sb.append(".getId());\n");
 							relationSet.add(m.group(1));
-							System.out.println(m.group(1));
 						} else {
 							sb.append("\t");
 							sb.append(set);
@@ -197,6 +231,52 @@ public class HibernateGenerator {
 				sb.append("\t\t\tsession.saveOrUpdate(" + objName + ");\n\n");
 			}
 			varName++;
+		}
+		// Handle relations
+		// 1:n mono
+		// If I instantiated an object that has a set, populate with other object of that type
+		List<Entry<String, Entry<String, String>>> oneToManyMono = relations.get("1:n-mono");
+		if(oneToManyMono != null) {
+			System.out.println("relation: " + oneToManyMono);
+			for(Entry<String, Entry<String, String>> rel : oneToManyMono) {
+				String left = rel.getValue().getKey(), right = rel.getValue().getValue();
+				// A copy of rights is required since we remove the elements on every iteration
+				// and we have to reuse them
+				List <String> rights = new ArrayList<String> (objTypeAssocFull.get(right));
+				List <String> lefts = objTypeAssocFull.get(left);
+				
+				if(lefts != null && rights != null) {
+					System.out.println("Right(" + right + ") rights: " + rights);
+					System.out.println("Left(" + left +") lefts: " + lefts);
+					int size = lefts.size();
+					int rightSize = rights.size();
+					for(int i=0; i < size && rightSize > 0; i++) {
+						sb.append("\t\t\t");
+						sb.append(lefts.get(i));
+						sb.append(".set");
+						sb.append(singlePlural.get(right));
+						sb.append("(new HashSet<");
+						sb.append(right);
+						sb.append(">());\n");
+						for(int k=0; k < rightSize; ++k) {
+							sb.append("\t\t\t");
+							sb.append(lefts.get(i));
+							sb.append(".get");
+							sb.append(singlePlural.get(right));
+							sb.append("().add(");
+							// 1:n relation, must remove element every time in order to assign
+							// elements without sharing them 
+							sb.append(rights.get(0));
+							rights.remove(0);
+							sb.append(");\n");
+						}
+						rightSize = 0;
+						sb.append("\t\t\tsession.saveOrUpdate(");
+						sb.append(lefts.get(i));
+						sb.append(");\n\n");
+					}
+				}
+			}
 		}
 		sb.append("\t\t\ttx.commit();\n");
 		sb.append("\t\t} catch(Exception e1) {\n");
@@ -212,6 +292,111 @@ public class HibernateGenerator {
 		sb.append("\t\t} finally {\n\t\t\tsession.close();\n\t\t}\n\t}\n}");
 		
 		Utils.WriteFile(pkgFolder + "HibernateMainTest.java", sb.toString());
+	}
+	
+	public void updateCfgs(Map <String, List<Entry<String, Entry<String, String>>>> relations) throws Exception {
+		List<Entry<String, Entry<String, String>>> oneToManyMono = relations.get("1:n-mono"),
+				oneToManyBi = relations.get("n:n-mono"), manyToManyMono = relations.get("n:n-mono"),
+				manyToManyBi = relations.get("n:n-bi");
+
+		if(oneToManyMono != null) {
+			// add to left-entity a set of right-entity
+			for(Entry<String, Entry<String, String>> rel : oneToManyMono) {
+				String left = rel.getValue().getKey(),
+					   right = rel.getValue().getValue();
+				// Create elements
+				DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+				DocumentBuilder db = dbf.newDocumentBuilder();
+				String filename = pkgFolder+left + ".hbm.xml";
+				Document doc = db.parse(filename);
+				
+				Element set = doc.createElement("set");
+				set.setAttribute("name", singlePlural.get(right).toLowerCase());
+				
+				Element key = doc.createElement("key");
+				key.setAttribute("column", "id" + left);
+				
+				Element otm = doc.createElement("one-to-many");
+				otm.setAttribute("class", pkg + ".hibernate." + right);
+
+				set.appendChild(key);
+				set.appendChild(otm);
+				
+				// Update
+				updateDOM(filename, doc, set);
+				updateBean(filename.replace(".hbm.xml", ".java"), right, singlePlural.get(right));
+			}
+		}
+		
+		if(manyToManyMono != null) {
+			for(Entry<String, Entry<String, String>> rel : manyToManyMono) {
+				System.err.println(rel);
+			}
+		}
+		
+	}
+	
+	private void updateDOM(String cfg, Document doc,  Element e) throws Exception {
+		NodeList properties = doc.getElementsByTagName("property");
+		properties.item(0).getParentNode().insertBefore(e, properties.item(0));
+		
+		// save
+		Transformer	trans = TransformerFactory.newInstance().newTransformer();
+		trans.setOutputProperty(OutputKeys.INDENT, "yes");
+		DocumentType docType = doc.getDoctype();
+		trans.setOutputProperty(OutputKeys.DOCTYPE_PUBLIC, docType.getPublicId());
+		trans.setOutputProperty(OutputKeys.DOCTYPE_SYSTEM, docType.getSystemId());
+		
+		StreamResult res = new StreamResult(new StringWriter());
+		DOMSource source = new DOMSource(doc);
+		trans.transform(source, res);
+		
+		Utils.WriteFile(cfg, res.getWriter().toString());
+	}
+	
+	private void updateBean(String bean, String singular, String plural) throws Exception {
+		BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(new File(bean))));
+		ArrayList<String> lines = new ArrayList<String>(50);
+		String line = null;
+		boolean importAdded = false, helpersAdded = false;
+		while((line = reader.readLine()) != null) {
+			if(!importAdded && line.contains("import")) {
+				importAdded = true;
+				line = line + "\nimport java.util.Set;\n";
+			} else if(!helpersAdded && line.matches("\\tpublic .*\\{")) {
+				StringBuilder sb = new StringBuilder("\tprivate Set<");
+				String pluralLC = plural.toLowerCase();
+				String singularUF = Utils.UcFirst(singular);
+				sb.append(Utils.UcFirst(singular));
+				sb.append("> ");
+				sb.append(pluralLC);
+				sb.append(";\n\n");
+				sb.append("\tpublic void set");
+				sb.append(Utils.UcFirst(plural));
+				sb.append("(Set<");
+				sb.append(singularUF);
+				sb.append("> ");
+				sb.append(pluralLC);
+				sb.append(") {\n\t\tthis.");
+				sb.append(pluralLC);
+				sb.append(" = ");
+				sb.append(pluralLC);
+				sb.append(";\n\t}\n\n\tpublic Set<");
+				sb.append(singularUF);
+				sb.append("> get");
+				sb.append(Utils.UcFirst(plural));
+				sb.append("() {\n\t\treturn this.");
+				sb.append(pluralLC);
+				sb.append(";\n\t}\n\n");
+				sb.append(line);
+				line = sb.toString();
+				helpersAdded = true;
+			}
+			lines.add(line);
+		}
+		reader.close();
+		Utils.WriteFile(bean, Utils.joinString("\n", lines.toArray(new String[lines.size()])));
+		
 	}
 
 }

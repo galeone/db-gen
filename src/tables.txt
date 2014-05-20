@@ -1,39 +1,65 @@
 -- Entity definitions --
 -- Use ALWAYS "Long" as type for integer --
 
-Fan(
-Nickname string
-Name string
-Surname string
-Age long
-) Fans - UNIQUE<Nickname>
+--Fan(
+--Nickname string
+--Name string
+--Surname string
+--Age long
+--) Fans - UNIQUE<Nickname>
 
-Location(
-City string
-Province string
-Address string
-) Locations - UNIQUE<City>
+--Location(
+--City string
+--Province string
+--Address string
+--) Locations - UNIQUE<City>
 
-Concert(
-Code string
-ArtistName string
-Data date
-Genre string
+--Concert(
+--Code string
+--ArtistName string
+--Data date
+--Genre string
 -- 1:N - 1 location can accommodate N concerts
-Location FK REFERENCES Location
-) Concerts - UNIQUE<Code>
+--Location FK REFERENCES Location
+--) Concerts - UNIQUE<Code>
 
 -- Relations --
 -- Project this table definition in case of N:N relation
 -- Create Fans_Concerts table
 
-N:N<Fan, Concert> {
-	Fans_Concerts(
-		Fan FK REFERENCES Fan
-		Concert FK REFERENCES Concert
-		) Fans_Concerts - PRIMARY KEY<Fan, Concert>
-}
+--N:N-mono<Fan, Concert> {
+--	Fans_Concerts(
+--		Fan FK REFERENCES Fan
+--		Concert FK REFERENCES Concert
+--		) Fans_Concerts - PRIMARY KEY<Fan, Concert>
+--}
 
 -- 1:N - 1 location can accommodate N concerts (FK)
-1:N<Location, Concert>
+--1:N-mono<Location, Concert> {
+--}
 
+Venditore(
+cf string
+nome string
+cognome string
+) Venditori - UNIQUE<cf>
+
+Vendita(
+Costo double
+Data date
+Venditore FK REFERENCES Venditore
+) Vendite
+
+Prodotto(
+SerialNumber string
+Descrizione string
+Vendita FK REFERENCES Vendita
+) Prodotti - UNIQUE<SerialNumber>
+
+-- Relations
+
+1:N-mono<Venditore, Vendita> {
+}
+
+1:N-mono<Vendita, Prodotto> {
+}

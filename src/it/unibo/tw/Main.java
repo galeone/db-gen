@@ -5,6 +5,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -24,8 +25,7 @@ public class Main {
 	private static final String pkg = "it.unibo.tw";
 	private static Map<String, Map<String, String>> fieldsFromName = new HashMap<String, Map<String, String>>();
 	private static List<Entry<String, String>> names = new ArrayList<Entry<String, String>>(); // singular, plural
-	//private static List<Entry<String, Entry<String, String>>> relations = new ArrayList<Entry<String, Entry<String, String>>>(); // N:M -> <a,b>, 1:N -> <a,c>
-	private static Map <String, Entry<String, Entry<String, String>>> relations = new HashMap<String, Entry<String, Entry<String, String>>>(); // modelXXX associate with cardinality X:X  A and B
+	private static Map <String, List<Entry<String, Entry<String, String>>>> relations = new HashMap<String, List<Entry<String, Entry<String, String>>>>(); // modelXXX associate with cardinality X:X  A and B
 	private static Map<String, String> constraintsByName = new HashMap<String, String>();
 	private static Map<String, String> singlePlural = new HashMap<String, String>();
 	private static String tableName, tableNamePlural, constraints;
@@ -43,7 +43,7 @@ public class Main {
 		String[] keys = constraint.replace(contraintType, "").replace(")", "").replace("(", "").trim().split(",");
 
 		for(int i = 0; i< keys.length; i++) {
-			String key = keys[i].trim();
+			String key = Utils.UcFirst(keys[i].trim());
 			if(fields.get(key).contains("REFERENCES")) {
 				keys[i] = "id" + key;
 			}
@@ -115,7 +115,7 @@ public class Main {
 			}
 			
 			if(line.contains(":")) { // relations - last lines
-				Pattern p = Pattern.compile("\\s*([a-z0-9]:[a-z0-9])\\s*<([a-z0-9_]+)\\s*,\\s*([a-z0-9_]+)\\s*>",Pattern.CASE_INSENSITIVE);
+				Pattern p = Pattern.compile("\\s*([a-z0-9]:[a-z0-9]-(?:mono|bi))\\s*<([a-z0-9_]+)\\s*,\\s*([a-z0-9_]+)\\s*>",Pattern.CASE_INSENSITIVE);
 				Matcher m = p.matcher(line);
 				if(m.find()) {
 					String relationType = m.group(1).toLowerCase();
@@ -128,8 +128,9 @@ public class Main {
 								getTableName();
 							} else if(line.contains(")")) {
 								getTableNamePlural();
-								relations.put(tableNamePlural, new AbstractMap.SimpleEntry<String, Entry<String, String>>(relationType, new AbstractMap.SimpleEntry<String, String>(leftEntity, rightEntity)));
 								parseConstraint();
+								// skip hibernate generation, since relation tables
+								// are join tables
 								generateEntity(true);
 								saveAssociations();
 								// clear
@@ -138,7 +139,12 @@ public class Main {
 								saveField();
 							}
 						}
-					}
+						// save relation type and entities involved
+						List<Entry<String, Entry<String, String>>> rel = relations.get(relationType);
+						if(rel == null) {
+							relations.put(relationType, new LinkedList<Entry<String, Entry<String, String>>>());
+						}
+						relations.get(relationType).add(new AbstractMap.SimpleEntry<String, Entry<String, String>>(tableNamePlural, new AbstractMap.SimpleEntry<String, String>(leftEntity, rightEntity)));					}
 				} else {
 					System.err.println("Syntax error");
 					System.exit(1);
@@ -180,10 +186,12 @@ public class Main {
 		jdbcGenerator.writeMainTest(names, fieldsFromName);
 		
 		// Hibernate //
-		// Generate Main
-		hibGenerator.writeMainTest(names, fieldsFromName, constraintsByName, relations);
 		// Generate hibernate.cfg.xml
 		hibGenerator.writeCfgXML();
+		// Add relations to cfgs
+		hibGenerator.updateCfgs(relations);
+		// Generate Main
+		hibGenerator.writeMainTest(names, fieldsFromName, constraintsByName, relations);
 		
 		// End
 		System.out.println("Please press F5 in the eclipse Project.\n"

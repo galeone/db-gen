@@ -51,7 +51,6 @@ public class BeanGenerator {
 	public void WriteBean(String tableName, Map<String, String> fields) throws Exception {
 		// Folder
 		String dest = pkgFolder + "/" + this.newFolder + "/";
-		System.out.println(dest);
 		// dao require special naming (e.g. StudentDTO instead of Student)
 		tableName =  tableName + (this.newFolder.equals("dao") ? "DTO" : "");
 		
