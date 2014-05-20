@@ -36,7 +36,17 @@ public class JDBCGenerator {
 		managerGenerator.writeManager(tableName, pluralName, fields, constraints, singlePlural);
 	}
 	
+	private void writePersistenceException() throws IOException {
+		StringBuilder sb = new StringBuilder("package " + pkg + ".db;\n\npublic class PersistenceException extends Exception {\n");
+		sb.append("\tprivate static final long serialVersionUID = 5068319580102263L;\n\n\tpublic PersistenceException(String msg){\n");
+		sb.append("\t\tsuper(msg);\n\t}\n}");
+		Utils.WriteFile(pkgFolder + "/db/PersistenceException.java", sb.toString());
+
+	}
+	
 	public void writeDataSource() throws Exception {
+		// write required exception
+		writePersistenceException();
 		StringBuilder sb = new StringBuilder("package " + pkg + ".db;\n\nimport java.sql.*;\n\npublic class DataSource {\n\n");
 		sb.append("\t//DBMS\n\tprivate int usedDb;\n\n\t//name\n\tprivate String dbName = \"tw_stud\";\n\tpublic final static int DB2 = 0;\n\n");
 		sb.append("\tpublic DataSource(int databaseType){\n\t\tthis.usedDb = databaseType;\n\t}\n\n");
