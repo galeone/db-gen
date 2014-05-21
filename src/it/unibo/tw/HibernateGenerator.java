@@ -233,11 +233,11 @@ public class HibernateGenerator {
 			varName++;
 		}
 		// Handle relations
+		sb.append("\t\t\t//Relations\n\n");
 		// 1:n mono
-		// If I instantiated an object that has a set, populate with other object of that type
 		List<Entry<String, Entry<String, String>>> oneToManyMono = relations.get("1:n-mono");
+		// If I instantiated an object that has a set, populate with other object of that type
 		if(oneToManyMono != null) {
-			System.out.println("relation: " + oneToManyMono);
 			for(Entry<String, Entry<String, String>> rel : oneToManyMono) {
 				String left = rel.getValue().getKey(), right = rel.getValue().getValue();
 				// A copy of rights is required since we remove the elements on every iteration
@@ -246,8 +246,6 @@ public class HibernateGenerator {
 				List <String> lefts = objTypeAssocFull.get(left);
 				
 				if(lefts != null && rights != null) {
-					System.out.println("Right(" + right + ") rights: " + rights);
-					System.out.println("Left(" + left +") lefts: " + lefts);
 					int size = lefts.size();
 					int rightSize = rights.size();
 					for(int i=0; i < size && rightSize > 0; i++) {
@@ -278,6 +276,53 @@ public class HibernateGenerator {
 				}
 			}
 		}
+		
+		// n:n-mono - the one created with a join table
+		List<Entry<String, Entry<String, String>>> manyToManyMono = relations.get("n:n-mono");
+		if(manyToManyMono != null) {
+			for(Entry<String, Entry<String, String>> rel : manyToManyMono) {
+				String left = rel.getValue().getKey(), right = rel.getValue().getValue();
+				// A copy of rights is required since we remove the elements on every iteration
+				// and we have to reuse them
+				List <String> rights = new ArrayList<String> (objTypeAssocFull.get(right));
+				List <String> lefts = objTypeAssocFull.get(left);
+				
+				if(lefts != null && rights != null) {
+					int size = lefts.size();
+					int rightSize = rights.size();
+					for(int i=0; i < size && rightSize > 0; i++) {
+						sb.append("\t\t\t");
+						sb.append(lefts.get(i));
+						sb.append(".set");
+						sb.append(singlePlural.get(right));
+						sb.append("(new HashSet<");
+						sb.append(right);
+						sb.append(">());\n");
+						for(int k=0; k < rightSize; ++k) {
+							sb.append("\t\t\t");
+							sb.append(lefts.get(i));
+							sb.append(".get");
+							sb.append(singlePlural.get(right));
+							sb.append("().add("); 
+							sb.append(rights.get(k));
+							sb.append(");\n");
+						}
+						// do not add every time every element, just remove one 
+						rightSize--;
+						sb.append("\t\t\tsession.saveOrUpdate(");
+						sb.append(lefts.get(i));
+						sb.append(");\n\n");
+					}
+				}
+				// update every item (all) added to the set
+				for(String el : rights) {
+					sb.append("\t\t\tsession.saveOrUpdate(");
+					sb.append(el);
+					sb.append(");\n");
+				}
+			}
+		}
+		
 		sb.append("\t\t\ttx.commit();\n");
 		sb.append("\t\t} catch(Exception e1) {\n");
 		sb.append("\t\t\tif (tx != null) {\n");
@@ -330,7 +375,31 @@ public class HibernateGenerator {
 		
 		if(manyToManyMono != null) {
 			for(Entry<String, Entry<String, String>> rel : manyToManyMono) {
-				System.err.println(rel);
+				String left = rel.getValue().getKey(),
+						   right = rel.getValue().getValue();
+					// Create elements
+					DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+					DocumentBuilder db = dbf.newDocumentBuilder();
+					String filename = pkgFolder+left + ".hbm.xml";
+					Document doc = db.parse(filename);
+					
+					Element set = doc.createElement("set");
+					set.setAttribute("name", singlePlural.get(right).toLowerCase());
+					set.setAttribute("table", rel.getKey());
+					
+					Element key = doc.createElement("key");
+					key.setAttribute("column", "id" + left);
+					
+					Element otm = doc.createElement("many-to-many");
+					otm.setAttribute("class", pkg + ".hibernate." + right);
+					otm.setAttribute("column", "id" + right);
+
+					set.appendChild(key);
+					set.appendChild(otm);
+					
+					// Update
+					updateDOM(filename, doc, set);
+					updateBean(filename.replace(".hbm.xml", ".java"), right, singlePlural.get(right));
 			}
 		}
 		

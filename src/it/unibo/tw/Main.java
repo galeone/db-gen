@@ -63,8 +63,8 @@ public class Main {
 	private static void saveField() {
 		String[] field = line.trim().split(" ");
 		// Name, Type [ FK REFERENCES <Tablename> ]
-		String typeAndRef = Utils.joinString(" ", Arrays.copyOfRange(field, 1, field.length));
-		fields.put( Utils.UcFirst(field[0].trim()), Utils.UcFirst(typeAndRef.trim()));
+		String typeAndRef = Utils.UcFirst(Utils.joinString(" ", Arrays.copyOfRange(field, 1, field.length)).trim());
+		fields.put( Utils.UcFirst(field[0].trim()), typeAndRef );
 	}
 	
 	private static void saveAssociations() {

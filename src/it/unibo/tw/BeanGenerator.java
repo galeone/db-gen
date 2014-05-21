@@ -18,7 +18,7 @@ public class BeanGenerator {
 	
 	private String getHelpers(Entry<String, String> field) {
 		String pub = "\tpublic ", eofMethod = ";\n\t}\n\n";
-		String type = field.getValue(), name = field.getKey();
+		String type = field.getValue().equals("Char") ?  "char" : field.getValue(), name = field.getKey();
 		
 		String lcFirstName = Utils.LcFirst(name),
 			   ucFirstName = Utils.UcFirst(name);

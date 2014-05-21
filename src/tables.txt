@@ -38,28 +38,52 @@
 --1:N-mono<Location, Concert> {
 --}
 
-Venditore(
-cf string
-nome string
-cognome string
-) Venditori - UNIQUE<cf>
+--Venditore(
+--cf string
+--nome string
+--cognome string
+--) Venditori - UNIQUE<cf>
 
-Vendita(
-Costo double
-Data date
-Venditore FK REFERENCES Venditore
-) Vendite
+--Vendita(
+--Costo double
+--Data date
+--Venditore FK REFERENCES Venditore
+--) Vendite
 
-Prodotto(
-SerialNumber string
-Descrizione string
-Vendita FK REFERENCES Vendita
-) Prodotti - UNIQUE<SerialNumber>
+--Prodotto(
+--SerialNumber string
+--Descrizione string
+--Vendita FK REFERENCES Vendita
+--) Prodotti - UNIQUE<SerialNumber>
 
 -- Relations
 
-1:N-mono<Venditore, Vendita> {
-}
+--1:N-mono<Venditore, Vendita> {
+--}
 
-1:N-mono<Vendita, Prodotto> {
+--1:N-mono<Vendita, Prodotto> {
+--}
+
+Corso(
+Codice long
+Titolo string
+CreditiFormativi long
+NomeDocent string
+) Corsi - UNIQUE<Codice>
+
+Studente(
+Matricola string
+Nome string
+Cognome string
+Sesso boolean
+DataNascita Date
+) Studenti - UNIQUE<Matricola>
+
+--Relations
+
+N:N-mono<Corso, Studente> {
+	Corso_Studente (
+		Corso FK REFERENCES Corso
+		Studente FK REFERENCES Studente
+	) Corsi_Studenti - PRIMARY KEY<Corso, Studente>
 }

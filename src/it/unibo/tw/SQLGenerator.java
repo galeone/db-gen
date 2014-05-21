@@ -43,7 +43,9 @@ public class SQLGenerator {
 			String type = field.getValue().toUpperCase();
 			if(type.equals("STRING")) {
 				type = " VARCHAR(50)";
-			} // date ok, double ok, boolean ok
+			} else if(type.equals("BOOLEAN")) { 
+				type = "SMALLINT";
+			}// date ok, double ok, long ok
 			String elem = "";
 			// Foreign key
 			if(name.indexOf("ID") == 0){
@@ -259,7 +261,7 @@ public class SQLGenerator {
 			} else if(type.equals("double")) {
 				ret += common + (randomNumber++) + "d);\n";
 			} else if(type.equals("boolean")) {
-				ret += common + (randomNumber++) + ");\n";
+				ret += common + (++randomNumber % 2 == 0 ? "false" : "true") + ");\n";
 			} else {
 				ret += common + (randomNumber++) + ");\n";
 			}
