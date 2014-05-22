@@ -1,5 +1,7 @@
 -- Entity definitions --
--- Use ALWAYS "Long" as type for integer --
+-- Use ALWAYS "Long" as type for integer types --
+
+-- 1:N, N:N both mono-directional sample
 
 --Fan(
 --Nickname string
@@ -38,6 +40,8 @@
 --1:N-mono<Location, Concert> {
 --}
 
+-- two 1:N mono-directional sample --
+
 --Venditore(
 --cf string
 --nome string
@@ -64,26 +68,69 @@
 --1:N-mono<Vendita, Prodotto> {
 --}
 
-Corso(
-Codice long
-Titolo string
-CreditiFormativi long
-NomeDocent string
-) Corsi - UNIQUE<Codice>
+-- N:N mono-directional sample --
 
-Studente(
-Matricola string
-Nome string
-Cognome string
-Sesso boolean
-DataNascita Date
-) Studenti - UNIQUE<Matricola>
+--Corso(
+--Codice long
+--Titolo string
+--CreditiFormativi long
+--NomeDocent string
+--) Corsi - UNIQUE<Codice>
 
---Relations
+--Studente(
+--Matricola string
+--Nome string
+--Cognome string
+--Sesso boolean
+--DataNascita Date
+--) Studenti - UNIQUE<Matricola>
 
-N:N-mono<Corso, Studente> {
-	Corso_Studente (
-		Corso FK REFERENCES Corso
-		Studente FK REFERENCES Studente
-	) Corsi_Studenti - PRIMARY KEY<Corso, Studente>
+--Relation
+
+--N:N-mono<Corso, Studente> {
+--	Corso_Studente (
+--		Corso FK REFERENCES Corso
+--		Studente FK REFERENCES Studente
+--	) Corsi_Studenti - PRIMARY KEY<Corso, Studente>
+--}
+
+-- N:N bidirectional sample --
+
+--Party(
+--Title string
+--Place string
+--Data date
+--) Parties - UNIQUE<Title>
+
+--Partecipant(
+--Nickname string
+--Name string
+--Surname string
+--Age Long
+--) Partecipants - UNIQUE<Nickname>
+
+--N:N-bi<Party, Partecipant> {
+--	Party_Partecipant(
+--		Party FK REFERENCES Party
+--		Partecipant FK REFERENCES Partecipant
+--	) Parties_Partecipants - PRIMARY KEY<Party, Partecipant>
+--}
+
+-- 1:N bidirectional sample --
+
+Venditore(
+cf string
+nome string
+cognome string
+) Venditori - UNIQUE<cf>
+
+Vendita(
+Costo double
+Data date
+Venditore FK REFERENCES Venditore
+) Vendite
+
+1:N-bi<Venditore, Vendita> {
 }
+
+

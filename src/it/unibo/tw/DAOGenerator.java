@@ -7,42 +7,45 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 public class DAOGenerator {
-	
+
 	private BeanGenerator beanGenerator;
 	private String pkg, pkgFolder, tableName;
 	private Map<String, String> fields;
 	private SQLGenerator sqlGen;
 	private String username, password;
-	
-	public DAOGenerator(String pkgFolder, String pkg, String tableName, Map<String, String> fields, String pluralName, String constraints, Map<String, String> singlePlural, String username, String password) {
+
+	public DAOGenerator(String pkgFolder, String pkg, String tableName,
+			Map<String, String> fields, String pluralName, String constraints,
+			Map<String, String> singlePlural, String username, String password) {
 		beanGenerator = new BeanGenerator(pkgFolder, pkg, "dao");
 		this.pkg = pkg;
 		this.pkgFolder = pkgFolder + "/dao/";
 		this.fields = fields;
 		this.tableName = tableName;
-		this.sqlGen = new SQLGenerator(fields, pluralName, tableName, constraints, singlePlural);
+		this.sqlGen = new SQLGenerator(fields, pluralName, tableName,
+				constraints, singlePlural);
 		this.username = username;
 		this.password = password;
 	}
-	
+
 	public void writeDTO() throws Exception {
 		beanGenerator.WriteBean(tableName, fields);
 	}
-	
+
 	public void writeDAO() throws IOException {
 		// Directory
 		File dir = new File(pkgFolder);
-		if(!dir.exists()) {
+		if (!dir.exists()) {
 			dir.mkdir();
 		}
-		
+
 		String baseName = Utils.UcFirst(tableName);
 		String dto = baseName + "DTO";
 		String dao = baseName + "DAO";
-		
+
 		StringBuilder sb = new StringBuilder("package " + pkg + ".dao;\n\n");
 		// Create DAO interface
-		sb.append("public interface " + dao +" {\n\n");
+		sb.append("public interface " + dao + " {\n\n");
 		sb.append("\t// CRUD\n\tpublic void create(");
 		sb.append(dto);
 		sb.append(" o);\n\tpublic ");
@@ -55,22 +58,22 @@ public class DAOGenerator {
 		sb.append("\t//My methods\n\n");
 		sb.append("}");
 		// Write interface
-		
+
 		String filename = pkgFolder + dao + ".java";
 		Utils.WriteFile(filename, sb.toString());
-		
+
 		// db2 implementation
 		String dest = pkgFolder + "/db2/";
 		dir = new File(dest);
-		if(!dir.exists()) {
+		if (!dir.exists()) {
 			dir.mkdir();
 		}
-			
+
 		sb.setLength(0); // clear sb
 		sb.append("package " + pkg + ".dao.db2;\n\n");
 		sb.append("import " + pkg + ".dao.*;\n");
 		sb.append("import java.sql.Connection;\nimport java.sql.PreparedStatement;\nimport java.sql.Statement;\nimport java.sql.ResultSet;\nimport java.util.logging.Logger;\n\n");
-		sb.append("public class Db2" + dao + " implements " + dao+  " {\n");
+		sb.append("public class Db2" + dao + " implements " + dao + " {\n");
 		sb.append("\tLogger logger = Logger.getLogger( getClass().getCanonicalName() );\n\n");
 		sb.append(sqlGen.getSQLConstants());
 		// dao methds
@@ -80,7 +83,7 @@ public class DAOGenerator {
 		sb.append(" o) {\n");
 		sb.append("\t\tConnection conn = Db2DAOFactory.createConnection();\n");
 		sb.append("\t\ttry {\n");
-		String db2dao = "Db2" + dao; 
+		String db2dao = "Db2" + dao;
 		sb.append("\t\t\tPreparedStatement statement = conn.prepareStatement(insert);\n");
 		sb.append("\t\t\tstatement.clearParameters();\n\n");
 		sb.append(sqlGen.getInsertSetter());
@@ -92,7 +95,7 @@ public class DAOGenerator {
 		sb.append("\t\t}\n\t}\n\n");
 		// read
 		sb.append("\t@Override\n\tpublic " + dto + " read(Long id) {\n");
-		sb.append("\t\t"+ dto + " res = null;\n");
+		sb.append("\t\t" + dto + " res = null;\n");
 		sb.append("\t\tif ( id < 0 )  {\n");
 		sb.append("\t\t\tlogger.warning(\"read(): cannot read an entry with a negative id\");\n");
 		sb.append("\t\t\treturn res;\n");
@@ -195,7 +198,7 @@ public class DAOGenerator {
 		filename = dest + db2dao + ".java";
 		Utils.WriteFile(filename, sb.toString());
 	}
-	
+
 	void writeFactories(List<Entry<String, String>> daos) throws IOException {
 		// DAOFactory (abstract)
 		StringBuilder sb = new StringBuilder("package " + pkg + ".dao;\n\n");
@@ -209,15 +212,15 @@ public class DAOGenerator {
 		sb.append("\t\tdefault:\n");
 		sb.append("\t\t\treturn null;\n");
 		sb.append("\t\t}\n\t}\n\n");
-		for(Entry<String, String> dao : daos ) {
+		for (Entry<String, String> dao : daos) {
 			String d = dao.getKey();
 			sb.append("\tpublic abstract " + d + " get" + d + "();\n");
 		}
 		sb.append("}");
-		
+
 		String filename = pkgFolder + "/DAOFactory.java";
 		Utils.WriteFile(filename, sb.toString());
-		
+
 		sb.setLength(0); // clear sb
 		sb.append("package " + pkg + ".dao.db2;\n\n");
 		sb.append("import " + pkg + ".dao.*;\n");
@@ -225,8 +228,10 @@ public class DAOGenerator {
 		sb.append("public class Db2DAOFactory extends DAOFactory {\n\n");
 		sb.append("\tpublic static final String DRIVER = \"com.ibm.db2.jcc.DB2Driver\";\n");
 		sb.append("\tpublic static final String DBURL = \"jdbc:db2://diva.deis.unibo.it:50000/tw_stud\";\n");
-		sb.append("\tpublic static final String USERNAME = \""+username+"\";\n");
-		sb.append("\tpublic static final String PASSWORD = \""+password+"\";\n");
+		sb.append("\tpublic static final String USERNAME = \"" + username
+				+ "\";\n");
+		sb.append("\tpublic static final String PASSWORD = \"" + password
+				+ "\";\n");
 		sb.append("\tstatic {\n");
 		sb.append("\t\ttry {\n");
 		sb.append("\t\t\tClass.forName(DRIVER);\n");
@@ -250,18 +255,19 @@ public class DAOGenerator {
 		sb.append("\t\t\te.printStackTrace();\n");
 		sb.append("\t\t}\n\t}\n\n");
 		sb.append("\t//Override abstract methods\n\n");
-		for(Entry<String, String> dao : daos ) {
+		for (Entry<String, String> dao : daos) {
 			String d = dao.getKey();
 			sb.append("\t@Override\n\tpublic " + d + " get" + d + "() {\n");
 			sb.append("\t\treturn new Db2" + d + "();\n\t}\n\n");
 		}
 		sb.append("}");
-		
+
 		filename = pkgFolder + "/db2/Db2DAOFactory.java";
 		Utils.WriteFile(filename, sb.toString());
 	}
-	
-	public void writeMainTest(List<Entry<String, String>> daos, Map<String, Map<String, String>> fieldsFromName) throws IOException {
+
+	public void writeMainTest(List<Entry<String, String>> daos,
+			Map<String, Map<String, String>> fieldsFromName) throws IOException {
 		StringBuilder sb = new StringBuilder("package " + pkg + ".dao;\n\n");
 		sb.append("import java.util.Calendar;\n\n");
 		sb.append("public class DAOMainTest {\n");
@@ -271,30 +277,32 @@ public class DAOGenerator {
 		sb.append("\t\tCalendar cal;\n\n");
 		char varName = 'a';
 		Map<String, String> fields;
-		for(Entry<String, String> dao : daos) {
+		for (Entry<String, String> dao : daos) {
 			String d = dao.getKey();
 			String var = d.toLowerCase();
 			sb.append("\t\t" + d);
 			sb.append(" ");
 			sb.append(var);
-			sb.append(" = daoFactoryInstance.get"+d+"();\n");
+			sb.append(" = daoFactoryInstance.get" + d + "();\n");
 			sb.append("\t\t" + var + ".dropTable();\n");
 			sb.append("\t\t" + var + ".createTable();\n\n");
-			
+
 			String typeNameWithoutDAO = d.replace("DAO", "");
-			fields = fieldsFromName.get(typeNameWithoutDAO.toLowerCase()); 
-			
+			fields = fieldsFromName.get(typeNameWithoutDAO.toLowerCase());
+
 			// create 2 instance
-			for(int i=0;i<2;++i) {
+			for (int i = 0; i < 2; ++i) {
 				String dto = d.replace("DAO", "DTO");
 				String objName = varName + "" + i;
-				sb.append("\t\t" + dto + " "+ objName + " = new " + dto + "();\n");
-				sb.append(sqlGen.getObjectInit(objName, fields, typeNameWithoutDAO));
+				sb.append("\t\t" + dto + " " + objName + " = new " + dto
+						+ "();\n");
+				sb.append(sqlGen.getObjectInit(objName, fields,
+						typeNameWithoutDAO));
 				sb.append("\t\t" + var + ".create(" + objName + ");\n\n");
 			}
 			varName++;
 		}
-		
+
 		sb.append("\n\t}\n\n\t//Test && Support methods\n\n}");
 		String filename = pkgFolder + "/DAOMainTest.java";
 		Utils.WriteFile(filename, sb.toString());

@@ -1,4 +1,5 @@
 package it.unibo.tw;
+
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
@@ -17,76 +18,92 @@ import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
 public class Main {
-	
+
 	private static JDBCGenerator jdbcGenerator;
 	private static DAOGenerator daoGenerator;
 	private static HibernateGenerator hibGenerator;
 	private static final String pkgFolder = "src/it/unibo/tw";
 	private static final String pkg = "it.unibo.tw";
 	private static Map<String, Map<String, String>> fieldsFromName = new HashMap<String, Map<String, String>>();
-	private static List<Entry<String, String>> names = new ArrayList<Entry<String, String>>(); // singular, plural
-	private static Map <String, List<Entry<String, Entry<String, String>>>> relations = new HashMap<String, List<Entry<String, Entry<String, String>>>>(); // modelXXX associate with cardinality X:X  A and B
+	private static List<Entry<String, String>> names = new ArrayList<Entry<String, String>>();
+	private static Map<String, List<Entry<String, Entry<String, String>>>> relations = new HashMap<String, List<Entry<String, Entry<String, String>>>>();
 	private static Map<String, String> constraintsByName = new HashMap<String, String>();
 	private static Map<String, String> singlePlural = new HashMap<String, String>();
 	private static String tableName, tableNamePlural, constraints;
 	private static Map<String, String> fields = new HashMap<String, String>();
 	private static String line, username, password;
-	
+
 	private static void parseConstraint() {
 		String[] lastLine = line.split("\\)")[1].trim().split("-");
-		if(lastLine.length < 2) {
+		if (lastLine.length < 2) {
 			constraints = "";
 			return;
 		}
 		String constraint = lastLine[1].replace('<', '(').replace('>', ')');
 		String contraintType = constraint.substring(0, constraint.indexOf("("));
-		String[] keys = constraint.replace(contraintType, "").replace(")", "").replace("(", "").trim().split(",");
+		String[] keys = constraint.replace(contraintType, "").replace(")", "")
+				.replace("(", "").trim().split(",");
 
-		for(int i = 0; i< keys.length; i++) {
+		for (int i = 0; i < keys.length; i++) {
 			String key = Utils.UcFirst(keys[i].trim());
-			if(fields.get(key).contains("REFERENCES")) {
+			String constr = fields.get(key);
+			if (constr == null) {
+				System.err.println(key
+						+ " is not a valid field in constraint for table: "
+						+ tableName);
+				System.exit(1);
+			}
+			if (fields.get(key).contains("REFERENCES")) {
 				keys[i] = "id" + key;
 			}
 		}
-		constraints = contraintType + " ( " + Utils.joinString(", ", keys) + " )";
+		constraints = contraintType + " ( " + Utils.joinString(", ", keys)
+				+ " )";
 	}
-	
+
 	private static void getTableName() {
 		tableName = Utils.UcFirst(line.split("\\(")[0].trim());
 	}
-	
+
 	private static void getTableNamePlural() {
 		String[] lastLine = line.split("\\)")[1].trim().split("-");
 		tableNamePlural = Utils.UcFirst(lastLine[0].trim());
 	}
-	
+
 	private static void saveField() {
 		String[] field = line.trim().split(" ");
 		// Name, Type [ FK REFERENCES <Tablename> ]
-		String typeAndRef = Utils.UcFirst(Utils.joinString(" ", Arrays.copyOfRange(field, 1, field.length)).trim());
-		fields.put( Utils.UcFirst(field[0].trim()), typeAndRef );
+		String typeAndRef = Utils.UcFirst(Utils.joinString(" ",
+				Arrays.copyOfRange(field, 1, field.length)).trim());
+		fields.put(Utils.UcFirst(field[0].trim()), typeAndRef);
 	}
-	
+
 	private static void saveAssociations() {
 		// save associations
-		fieldsFromName.put(tableName.toLowerCase(), new HashMap<String, String>(fields));
-		names.add( new AbstractMap.SimpleEntry<String, String>(tableName, tableNamePlural));
+		fieldsFromName.put(tableName.toLowerCase(),
+				new HashMap<String, String>(fields));
+		names.add(new AbstractMap.SimpleEntry<String, String>(tableName,
+				tableNamePlural));
 		constraintsByName.put(tableName.toLowerCase(), new String(constraints));
 		singlePlural.put(tableName, tableNamePlural);
 	}
-	
+
 	private static void generateEntity(boolean skipHibernate) throws Exception {
 		// JDBC
-		jdbcGenerator = new JDBCGenerator(pkgFolder, pkg, tableName, fields, tableNamePlural, constraints, singlePlural, username, password);
+		jdbcGenerator = new JDBCGenerator(pkgFolder, pkg, tableName, fields,
+				tableNamePlural, constraints, singlePlural, username, password);
 		jdbcGenerator.writeBean();
 		jdbcGenerator.writeManager();
 		// DAO
-		daoGenerator = new DAOGenerator(pkgFolder, pkg, tableName, fields, tableNamePlural, constraints, singlePlural, username, password);
+		daoGenerator = new DAOGenerator(pkgFolder, pkg, tableName, fields,
+				tableNamePlural, constraints, singlePlural, username, password);
 		daoGenerator.writeDTO();
 		daoGenerator.writeDAO();
 		// Hibernate
-		if(!skipHibernate) {
-			hibGenerator = new HibernateGenerator(pkgFolder, pkg, tableName, fields, tableNamePlural, constraints, singlePlural, username, password);
+		if (!skipHibernate) {
+			hibGenerator = new HibernateGenerator(pkgFolder, pkg, tableName,
+					fields, tableNamePlural, constraints, singlePlural,
+					username, password);
 			hibGenerator.writeBeans();
 			hibGenerator.writeModelCfg();
 		}
@@ -94,42 +111,48 @@ public class Main {
 
 	/* See tables.txt to see a valid syntax example */
 	public static void main(String[] args) throws Exception {
-		BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream("src/tables.txt")));
-		BufferedReader r2 = new BufferedReader(new InputStreamReader(new FileInputStream("src/config.json")));
+		BufferedReader reader = new BufferedReader(new InputStreamReader(
+				new FileInputStream("src/tables.txt")));
+		BufferedReader r2 = new BufferedReader(new InputStreamReader(
+				new FileInputStream("src/config.json")));
 		String json = "";
-		while((line = r2.readLine()) != null) {
+		while ((line = r2.readLine()) != null) {
 			json += line;
 		}
 		r2.close();
 
-		JSONObject data = (JSONObject)JSONValue.parse(json);
+		JSONObject data = (JSONObject) JSONValue.parse(json);
 		username = (String) data.get("username");
 		password = (String) data.get("password");
 		System.out.println("[!] Credentials read");
-		
-		//parse ./tables.txt
-		while((line = reader.readLine()) != null) {
+
+		// parse ./tables.txt
+		while ((line = reader.readLine()) != null) {
 			// skip white lines and comments --
-			if(line.equals("") || line.startsWith("--")) {
+			if (line.equals("") || line.startsWith("--")) {
 				continue;
 			}
-			
-			if(line.contains(":")) { // relations - last lines
-				Pattern p = Pattern.compile("\\s*([a-z0-9]:[a-z0-9]-(?:mono|bi))\\s*<([a-z0-9_]+)\\s*,\\s*([a-z0-9_]+)\\s*>",Pattern.CASE_INSENSITIVE);
+
+			if (line.contains(":")) { // relations - last lines
+				Pattern p = Pattern
+						.compile(
+								"\\s*([a-z0-9]:[a-z0-9]-(?:mono|bi))\\s*<([a-z0-9_]+)\\s*,\\s*([a-z0-9_]+)\\s*>",
+								Pattern.CASE_INSENSITIVE);
 				Matcher m = p.matcher(line);
-				if(m.find()) {
+				if (m.find()) {
 					String relationType = m.group(1).toLowerCase();
 					String leftEntity = m.group(2);
 					String rightEntity = m.group(3);
 					// contains table definition
-					if(line.contains("{")) {
-						while(!(line = reader.readLine()).contains("}")) {
-							if(line.contains("(")) {
+					if (line.contains("{")) {
+						while (!(line = reader.readLine()).contains("}")) {
+							if (line.contains("(")) {
 								getTableName();
-							} else if(line.contains(")")) {
+							} else if (line.contains(")")) {
 								getTableNamePlural();
 								parseConstraint();
-								// skip hibernate generation, since relation tables
+								// skip hibernate generation, since relation
+								// tables
 								// are join tables
 								generateEntity(true);
 								saveAssociations();
@@ -140,19 +163,28 @@ public class Main {
 							}
 						}
 						// save relation type and entities involved
-						List<Entry<String, Entry<String, String>>> rel = relations.get(relationType);
-						if(rel == null) {
-							relations.put(relationType, new LinkedList<Entry<String, Entry<String, String>>>());
+						List<Entry<String, Entry<String, String>>> rel = relations
+								.get(relationType);
+						if (rel == null) {
+							relations
+									.put(relationType,
+											new LinkedList<Entry<String, Entry<String, String>>>());
 						}
-						relations.get(relationType).add(new AbstractMap.SimpleEntry<String, Entry<String, String>>(tableNamePlural, new AbstractMap.SimpleEntry<String, String>(leftEntity, rightEntity)));					}
+						relations
+								.get(relationType)
+								.add(new AbstractMap.SimpleEntry<String, Entry<String, String>>(
+										tableNamePlural,
+										new AbstractMap.SimpleEntry<String, String>(
+												leftEntity, rightEntity)));
+					}
 				} else {
 					System.err.println("Syntax error");
 					System.exit(1);
 				}
-				
-			} else if(line.contains("(")) { // begin table definition
+
+			} else if (line.contains("(")) { // begin table definition
 				getTableName();
-			} else if(line.contains(")")) { // end table definition
+			} else if (line.contains(")")) { // end table definition
 				getTableNamePlural();
 				// add Long ID to field set (always present)
 				fields.put("Id", "Long");
@@ -164,38 +196,42 @@ public class Main {
 				saveAssociations();
 				// clear
 				fields.clear();
-			} else { //field
+			} else { // field
 				saveField();
 			}
 		}
 		reader.close();
 		// DAO //
-		List<Entry<String, String>> daoNames = new ArrayList<Entry<String, String>>(names.size());
-		for(Entry<String, String> name : names) {
-			daoNames.add(new AbstractMap.SimpleEntry<String,String>(name.getKey() + "DAO", ""));
+		List<Entry<String, String>> daoNames = new ArrayList<Entry<String, String>>(
+				names.size());
+		for (Entry<String, String> name : names) {
+			daoNames.add(new AbstractMap.SimpleEntry<String, String>(name
+					.getKey() + "DAO", ""));
 		}
 		// Generate Factories
 		daoGenerator.writeFactories(daoNames);
 		// Generate Main
 		daoGenerator.writeMainTest(daoNames, fieldsFromName);
-		
+
 		// JDBC //
 		// Generate DataSource
 		jdbcGenerator.writeDataSource();
 		// Generate Main
 		jdbcGenerator.writeMainTest(names, fieldsFromName);
-		
+
 		// Hibernate //
 		// Generate hibernate.cfg.xml
 		hibGenerator.writeCfgXML();
 		// Add relations to cfgs
 		hibGenerator.updateCfgs(relations);
 		// Generate Main
-		hibGenerator.writeMainTest(names, fieldsFromName, constraintsByName, relations);
-		
+		hibGenerator.writeMainTest(names, fieldsFromName, constraintsByName,
+				relations);
+
 		// End
-		System.out.println("Please press F5 in the eclipse Project.\n"
-				+ "Go into models folders (model,dao,hibernate) and: Source -> generate hashCode() and equals()");
+		System.out
+				.println("Please press F5 in the eclipse Project.\n"
+						+ "Go into models folders (model,dao,hibernate) and: Source -> generate hashCode() and equals()");
 	}
 
 }
