@@ -195,7 +195,7 @@ public class SQLGenerator {
 		howMany++;
 		// updatePositions.put("ID", howMany);
 		// read by id
-		sb.append("\tprivate static final String read_by_id = \"SELECT * FROM \" + TABLE + \" WHERE + \" + ID + \"  = ");
+		sb.append("\tprivate static final String read_by_id = \"SELECT * FROM \" + TABLE + \" WHERE \" + ID + \"  = ");
 		if (idCount != 0) {
 			sb.append("(");
 			for (int i = 0; i < idCount - 1; i++) {
