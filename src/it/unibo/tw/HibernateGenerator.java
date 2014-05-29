@@ -53,10 +53,11 @@ public class HibernateGenerator {
 	}
 
 	public void writeModelCfg() throws Exception {
+		File mappingDTD = new File("src/hibernate-mapping-3.0.dtd");
 		StringBuilder sb = new StringBuilder(
-				"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE hibernate-mapping PUBLIC\n");
-		sb.append("\t\"-//Hibernate/Hibernate Mapping DTD 3.0//EN\"\n");
-		sb.append("\t\"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd\">\n\n");
+				"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
+		sb.append("<!--\n<!DOCTYPE hibernate-mapping PUBLIC \"-//Hibernate/Hibernate Mapping DTD 3.0//EN\" \"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd\">\n -->\n");
+		sb.append("<!DOCTYPE hibernate-mapping SYSTEM\n\t\""+ mappingDTD.getAbsolutePath() + "\">\n\n");
 		sb.append("<hibernate-mapping>\n<class name=\"");
 		sb.append(pkg + ".hibernate." + tableName + "\" table=\""
 				+ pluralName.toLowerCase() + "\">\n");
@@ -66,11 +67,12 @@ public class HibernateGenerator {
 	}
 
 	public void writeCfgXML() throws Exception {
+		File confDTD = new File("src/hibernate-configuration-3.0.dtd");
 		StringBuilder sb = new StringBuilder(
-				"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE hibernate-configuration PUBLIC\n");
+				"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- <!DOCTYPE hibernate-configuration PUBLIC\n");
 		sb.append("\t\"-//Hibernate/Hibernate Configuration DTD 3.0//EN\"\n");
-		sb.append("\t\"http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd\">\n\n");
-
+		sb.append("\t\"http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd\"> -->\n");
+		sb.append("<!DOCTYPE hibernate-configuration SYSTEM\n\t\""+confDTD.getAbsolutePath()+"\">\n\n");
 		sb.append("<hibernate-configuration>\n\t<session-factory>\n\t\t<!-- Database connection settings -->\n");
 		sb.append("\t\t<property name=\"connection.driver_class\">com.ibm.db2.jcc.DB2Driver</property>\n");
 		sb.append("\t\t<property name=\"connection.url\">jdbc:db2://diva.deis.unibo.it:50000/tw_stud</property>\n");
@@ -672,8 +674,10 @@ public class HibernateGenerator {
 		Transformer trans = TransformerFactory.newInstance().newTransformer();
 		trans.setOutputProperty(OutputKeys.INDENT, "yes");
 		DocumentType docType = doc.getDoctype();
+		/*
 		trans.setOutputProperty(OutputKeys.DOCTYPE_PUBLIC,
 				docType.getPublicId());
+		*/
 		trans.setOutputProperty(OutputKeys.DOCTYPE_SYSTEM,
 				docType.getSystemId());
 

@@ -86,10 +86,10 @@ public class SQLGenerator {
 			String name = field.getKey().toUpperCase();
 			String type = field.getValue();
 
-			// Skip keys
-			if (name.indexOf("ID") == 0) {
+			// Skip primary key
+			if (name.equals("ID")) {
 				continue;
-			} else { // no key - element
+			} else { // no primary key - element
 				sb.append("\t<property column=\"" + name + "\" name=\"");
 				sb.append(Utils.LcFirst(field.getKey()) + "\" type=\""
 						+ type.toLowerCase() + "\"");

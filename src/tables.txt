@@ -118,19 +118,17 @@
 
 -- 1:N bidirectional sample --
 
-Venditore(
-cf string
-nome string
-cognome string
-) Venditori - UNIQUE<cf>
+-- Venditore(
+-- cf string
+-- nome string
+-- cognome string
+-- ) Venditori - UNIQUE<cf>
 
-Vendita(
-Costo double
-Data date
-Venditore FK REFERENCES Venditore
-) Vendite
+-- Vendita(
+-- Costo double
+-- Data date
+-- Venditore FK REFERENCES Venditore
+-- ) Vendite
 
-1:N-bi<Venditore, Vendita> {
-}
-
-
+-- 1:N-bi<Venditore, Vendita> {
+-- }
