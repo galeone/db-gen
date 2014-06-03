@@ -235,8 +235,7 @@ public class SQLGenerator {
 		boolean hibernate = objType.equals("");
 
 		for (Entry<String, String> field : fields.entrySet()) {
-			String name = Utils.UcFirst(field.getKey()), type = field
-					.getValue().toLowerCase();
+			String name = Utils.UcFirst(field.getKey()), type = field.getValue().toLowerCase();
 			String id = "" + (randomNumber++);
 			// save id value for this type
 			if (!hibernate && name.toLowerCase().equals("id")) {

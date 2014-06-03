@@ -111,7 +111,10 @@ public class ManagerGenerator {
 		sb.append("\t\t\tSystem.out.println(update);\n");
 		sb.append("\t\t\tstatement = connection.prepareStatement(update);\n");
 		// loop
-		sb.append(sqlGen.getUpdateSetter());
+		String updateSetter = sqlGen.getUpdateSetter();
+		sb.append(updateSetter);
+		// add the last parameter, aka where id = ?
+		sb.append("\t\t\tstatement.setLong(" + (updateSetter.split("\n").length + 1) + ", o.getId());\n");
 		sb.append("\t\t\tstatement.executeUpdate();\n");
 		sb.append("\t\t} catch(SQLException e) {\n");
 		sb.append("\t\t\tthrow new PersistenceException(e.getMessage());\n");
