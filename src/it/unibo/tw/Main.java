@@ -229,9 +229,11 @@ public class Main {
 				relations);
 
 		// End
-		System.out
-				.println("Please press F5 in the eclipse Project.\n"
-						+ "Go into models folders (model,dao,hibernate) and: Source -> generate hashCode() and equals()");
+		System.out.println("\n1) Press F5 in the eclipse Project.\n"
+				+ "2) Go into models folders (model,dao,hibernate) and for every bean do: Source -> generate hashCode() and equals().\n"
+				+ "3) Uncomment the DTD declaration in the hibernate configuration files and remove the local one, if you don't need to use it.\n"
+				+ "4) Update the connection string in generated files (use intranet or whatever you need)\n");
+		System.out.println("[!] Good luck ;)");
 	}
 
 }

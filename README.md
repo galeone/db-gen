@@ -14,3 +14,5 @@ I know, but I need it as soon as possible and I really don't care so much about 
 Anyway, it works.
 
 The project shoud be openend and runned into Eclipse. The configuration is done editing the src/tables.txt file (is intuitive) and the Main class.
+
+The only thing you have to do is configure properly the src/config.json file.
