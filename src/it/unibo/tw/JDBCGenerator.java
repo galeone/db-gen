@@ -35,10 +35,14 @@ public class JDBCGenerator {
 	public void writeBean() throws Exception {
 		beanGenerator.WriteBean(tableName, fields);
 	}
+	
+	public void writeManager(boolean joinTable) throws IOException {
+		managerGenerator.writeManager(tableName, pluralName, fields,
+				constraints, singlePlural, joinTable);
+	}
 
 	public void writeManager() throws IOException {
-		managerGenerator.writeManager(tableName, pluralName, fields,
-				constraints, singlePlural);
+		writeManager(false);
 	}
 
 	private void writePersistenceException() throws IOException {

@@ -87,13 +87,18 @@ public class Main {
 		constraintsByName.put(tableName.toLowerCase(), new String(constraints));
 		singlePlural.put(tableName, tableNamePlural);
 	}
-
+	
 	private static void generateEntity(boolean skipHibernate) throws Exception {
+		generateEntity(skipHibernate, false);
+	}
+
+
+	private static void generateEntity(boolean skipHibernate, boolean joinTable) throws Exception {
 		// JDBC
 		jdbcGenerator = new JDBCGenerator(pkgFolder, pkg, tableName, fields,
 				tableNamePlural, constraints, singlePlural, username, password);
 		jdbcGenerator.writeBean();
-		jdbcGenerator.writeManager();
+		jdbcGenerator.writeManager(joinTable);
 		// DAO
 		daoGenerator = new DAOGenerator(pkgFolder, pkg, tableName, fields,
 				tableNamePlural, constraints, singlePlural, username, password);
@@ -154,7 +159,7 @@ public class Main {
 								// skip hibernate generation, since relation
 								// tables
 								// are join tables
-								generateEntity(true);
+								generateEntity(true, true);
 								saveAssociations();
 								// clear
 								fields.clear();
