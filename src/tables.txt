@@ -132,3 +132,19 @@
 
 -- 1:N-bi<Venditore, Vendita> {
 -- }
+
+-- Tavolo(
+--	Numero long
+--	Capienza long
+-- ) Tavoli - UNIQUE<Numero>
+
+-- PrenotazioneRistorante(
+--	Cognome string
+--	Data date
+--	NumPersone long
+--	Cellulare string
+--	Tavolo FK REFERENCES Tavolo
+-- ) Prenotazioni_Ristorante - UNIQUE<Cognome, Data> & UNIQUE <Tavolo, Data>
+
+-- 1:N-mono<Tavolo, PrenotazioneRistorante> {
+-- }
