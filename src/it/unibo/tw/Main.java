@@ -34,31 +34,43 @@ public class Main {
 	private static String line, username, password;
 
 	private static void parseConstraint() {
+		constraints = "";
 		String[] lastLine = line.split("\\)")[1].trim().split("-");
 		if (lastLine.length < 2) {
-			constraints = "";
 			return;
 		}
-		String constraint = lastLine[1].replace('<', '(').replace('>', ')');
-		String contraintType = constraint.substring(0, constraint.indexOf("("));
-		String[] keys = constraint.replace(contraintType, "").replace(")", "")
-				.replace("(", "").trim().split(",");
+		
+		String constraints_line = lastLine[1].replace('<', '(').replace('>', ')');		
+		String[] constraintsArray = constraints_line.split("&");
+		for (int i = 0; i < constraintsArray.length; ++i) 
+		{
+			String constraint = constraintsArray[i];
+			String contraintType = constraint.substring(0, constraint.indexOf("("));
+			String[] keys = constraint.replace(contraintType, "").replace(")", "").replace("(", "").trim().split(",");
 
-		for (int i = 0; i < keys.length; i++) {
-			String key = Utils.UcFirst(keys[i].trim());
-			String constr = fields.get(key);
-			if (constr == null) {
-				System.err.println(key
-						+ " is not a valid field in constraint for table: "
-						+ tableName);
-				System.exit(1);
+			for (int j = 0; j < keys.length; j++) 
+			{
+				String key = Utils.UcFirst(keys[j].trim());
+				String constr = fields.get(key);
+				
+				if (constr == null) 
+				{
+					System.err.println(key + " is not a valid field in constraint for table: " + tableName);
+					System.exit(1);
+				}
+				
+				if (fields.get(key).contains("REFERENCES")) 
+				{
+					keys[j] = "id" + key;
+				}
 			}
-			if (fields.get(key).contains("REFERENCES")) {
-				keys[i] = "id" + key;
+			
+			constraints += contraintType + " ( " + Utils.joinString(", ", keys)	+ " )";
+			if (i < constraintsArray.length - 1) 
+			{
+				constraints += ", ";
 			}
 		}
-		constraints = contraintType + " ( " + Utils.joinString(", ", keys)
-				+ " )";
 	}
 
 	private static void getTableName() {
